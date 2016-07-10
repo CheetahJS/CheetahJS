@@ -1,0 +1,62 @@
+﻿
+<ch-template name="Automobile">
+
+  <h2>Make: //Make//</h2>
+  <h4>//Year// //Make// //Name//</h4>
+
+  <h5>Year: //Year//</h5><br />
+  <h6>Owner: //Owner//</h6><br />
+  <label>Color: //Color//</label><br />
+  <p>Index: //$$index//</p><br />
+
+</ch-template>
+
+<ch-template name="BoatInner">
+
+  <h5>Year: //Year//</h5><br />
+  <ch-call-template name="BoatOwner"></ch-call-template>
+  <label>Color: //Color//</label><br />
+  <p>Index: //$$index//</p><br />
+
+</ch-template>
+
+<ch-template name="Boat">
+
+  <h2>Make: //Make//</h2>
+  <h4>//Year// //Make// //Name//</h4>
+
+  <ch-call-template name="BoatInner"></ch-call-template>
+
+</ch-template>
+
+<ch-template name="BoatOwner">
+
+  <h6>Owner: //Owner//</h6><br />
+
+</ch-template>
+
+<ch-template name="Chooser">
+
+  <ch-action name="onchoose">
+    <ClassSetter select=".choice" remove="sel">.</ClassSetter>
+    <ClassSetter add="sel">.</ClassSetter>
+    <ModelSetter name="$$parent.$$parent.CurrentChoice" value="//$$index//">.</ModelSetter>
+    <ModelSetter name="$$parent.$$parent.CurrentChoiceModel" value="$$target">.</ModelSetter>
+    <Call>//$onchoose//</Call>
+  </ch-action>
+
+  <ul class="chooser">
+    <ch-bind on="$bind" sort="//$sort//">
+      <li id="//Id//" class="choice" ch-click="^onchoose">
+        <ch-template-contents>.</ch-template-contents>
+      </li>
+    </ch-bind>
+  </ul>
+
+</ch-template>
+
+<ch-action name="MakeTotallyDifferent">
+  <ClassSetter select="$parent.$parent.$parent" add="green">.</ClassSetter>
+  <call>MakeSomebodyElse</call>
+</ch-action>
+

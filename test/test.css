@@ -1,0 +1,144 @@
+﻿body 
+{
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#tests
+{
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 30%;
+  overflow-y: auto;
+}
+
+#tests > div
+{
+  margin: 10px 10px 0 10px;
+  padding: 20px;
+}
+
+#tests > div:nth-child(odd)
+{
+  background-color: #f5f5f5;
+}
+
+#testresults
+{
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 70%;
+  border-left: solid 4px #bbb;
+  background-color: #eee;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+#testresults h1
+{
+  margin: 0;
+  font-size: 14pt;
+  color: green;
+}
+
+#testresults h2
+{
+  margin:     10px;
+  font-size: 10pt;
+  font-weight: normal;
+}
+
+#testresults h1.failed
+{
+  color: red;
+}
+
+#testresults > div
+{
+  margin-bottom: 3px;
+}
+
+.test
+{
+margin-top: 15px;
+  font-weight: bold;
+  color: #444;
+}
+
+.fail
+{
+margin-left: 15px;
+  font-size: 11pt;
+  color: red;
+}
+
+.success
+{
+margin-left: 15px;
+  font-size: 11pt;
+  color: green;
+}
+
+h3
+{
+  margin: 0 0 10px 0;
+}
+
+.green
+{
+  background-color: lawngreen !important;
+}
+
+.red
+{
+  background-color: red !important;
+}
+
+.blue
+{
+  background-color: lightblue !important;
+}
+.orange
+{
+  background-color: orange !important;
+}
+
+.borders
+{
+  border: solid 4px #888;
+}
+
+#test32 li
+{
+ cursor: pointer;
+}
+
+#test32 li.sel
+{
+background-color: #bbb;
+}
+
+.chooser li
+{
+cursor: pointer;
+}
+
+.chooser li:hover
+{
+font-weight: bold;
+color: #999;
+}
+
+.chooser .sel
+{
+font-weight: bold !important;
+color: blue;
+}
+
+.chooser .sel:hover
+{
+color: blue;
+}

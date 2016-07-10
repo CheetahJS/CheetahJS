@@ -1,0 +1,1519 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cheetah Test Suite</title>
+    <link type="text/css" rel="stylesheet" href="test.css" />
+    <link type="text/css" rel="stylesheet" href="jqueryui.css" />
+  </head>
+
+<body>
+
+  <ch-include>templates.html</ch-include>
+  <ch-include>templates2.html</ch-include>
+  <ch-include>templates3.html</ch-include>
+  <ch-include>templates4.html</ch-include>
+  <ch-include>templates5.html</ch-include>
+
+  <ch-template name="Car">
+
+    <h2>Make: //Make//</h2>
+    <h4>//Year// //Make// //Name//</h4>
+
+    <h5>Year: //Year//</h5><br />
+    <h6>Owner: //$owner//</h6><br />
+    <label>Color: //Color//</label><br />
+    <p>Index: //$$index//</p><br />
+
+  </ch-template>
+
+  <ch-template name="Vehicles">
+
+    <h2>My Vehicles:</h2>
+    <ch-call-template name="Car" owner="//Owner//">
+
+    </ch-call-template>
+
+    <p class="p2">I also have a //$other//</p>
+
+  </ch-template>
+
+  <div id="tests">
+
+    <div id="test1">
+      <h3>Test1</h3>
+      <ch-bind on="Colors">
+        <input type="text" value="//Color//" /><br />
+      </ch-bind>
+    </div>
+
+    <div id="test2">
+      <h3>Test2</h3>
+      <ch-if test="Name == 'Fred'">
+        <input type="text" value="Fred" />
+      </ch-if>
+      <ch-else>
+        <input type="text" value="John" />
+      </ch-else>
+    </div>
+
+    <div id="test3">
+      <h3>Test3</h3>
+      <ch-if test="Name == 'Fred'">
+        <input type="text" value="Fred" />
+      </ch-if>
+      <ch-else>
+        <input type="text" value="John" />
+      </ch-else>
+    </div>
+
+    <div id="test4">
+      <h3>Test4</h3>
+      <ch-if test="Name != 'Fred' and Name != 'George'">
+        <input type="text" value="John" />
+      </ch-if>
+      <ch-else>
+        <input type="text" value="Fred or George" />
+      </ch-else>
+    </div>
+
+    <div id="test5">
+      <h3>Test5</h3>
+      <ch-if test="Name != 'Fred' and Name != 'George'">
+        <input type="text" value="John" />
+      </ch-if>
+      <ch-else>
+        <input type="text" value="Fred or George" />
+      </ch-else>
+    </div>
+
+    <div id="test6">
+      <h3>Test6</h3>
+      <ch-bind on="Fred">
+        <input id="test6_1" type="text" value="//Name//" /><br />
+      </ch-bind>
+      <ch-bind on="John">
+        <input id="test6_2" type="text" value="//Name//" />
+      </ch-bind>
+    </div>
+
+    <div id="test7">
+      <h3>Test7</h3>
+      <div><br /></div>
+      <ch-bind on="Fred">
+        <button id="btnMakeGreen7">
+          <ch-action>
+            <classsetter add="green" select="#test7">.</classsetter>
+            <stylesetter name="height" select="#test7 div" value="42px">.</stylesetter>
+            <propertysetter name="data-fred" select="#test7 button" value="bob">.</propertysetter>
+            <visibilitysetter select="#test7 div" value="false">.</visibilitysetter>
+          </ch-action>
+          Make Green
+        </button><br />
+      </ch-bind>
+    </div>
+
+    <div id="test8">
+      <h3>Test8</h3>
+      <div><br /></div>
+      <div id="Test8Text">//Name//</div>
+      <button id="btnDo8" ch-click="Name: 'John'">John</button><br />
+      <div><br /></div>
+      <div id="Test8Text2">This guy //Name// is //Age// years old and lives in //City//.</div>
+      <button id="btnDo82" ch-click="ChangePerson">Kyle</button><br />
+    </div>
+
+    <div id="test9">
+      <div id="test9_inner" class="borders" ch-class="green: Mode == 'admin', orange: Mode == 'edit', blue">
+        <h3>Test9</h3>
+        <div><br /></div>
+        <button id="btn9_1" ch-click="Mode: 'edit'">Edit Mode (orange)</button><br />
+        <button id="btn9_2" ch-click="Mode: 'detail'">Detail Mode (blue)</button><br />
+        <button id="btn9_3" ch-click="Mode: 'admin'">Admin Mode (green)</button><br />
+      </div>
+    </div>
+
+    <div id="test10">
+      <div id="test10_inner" ch-class="green: Mode == 'admin', orange: Mode == 'edit', blue">
+        <h3>Test10</h3>
+        <div><br /></div>
+        <button id="btn10_1" ch-click="Mode: 'edit'">Edit Mode (orange)</button><br />
+        <button id="btn10_2" ch-click="Mode: 'detail'">Detail Mode (blue)</button><br />
+        <button id="btn10_3" ch-click="Mode: 'admin'" ch-disabled="Mode == 'detail'">Admin Mode (green)</button><br />
+
+        <input id="txt10" type="text" ch-readonly="Mode == 'detail'" value="Fred" /><br />
+
+        <input id="chkDetail" type="checkbox" ch-checked="Mode == 'detail'" /><label for="chkDetail">Detail Mode</label><br />
+        <input id="chkAdmin" type="checkbox" ch-checked="Mode == 'admin'" /><label for="chkDetail">Admin Mode</label><br />
+        <input id="chkEdit" type="checkbox" ch-checked="Mode == 'edit'" /><label for="chkDetail">Edit Mode</label><br />
+      </div>
+    </div>
+
+    <div id="test11">
+      <div id="test11_inner">
+        <h3>Test11</h3>
+        <div><br /></div>
+        <h2>This car is //Speed// and //Color// and //Price//!</h2>
+
+        <label>Speed</label><br />
+        <input id="txtTest11_Speed" type="text" ch-bind="Speed" /><br />
+        <input id="txtTest11_Speed2" type="text" ch-bind="Speed" /><br /><br />
+
+        <label>Color</label><br />
+        <input id="txtTest11_Color" type="text" ch-bind="Color" /><br /><br />
+
+        <label>Price</label><br />
+        <input id="txtTest11_Price" type="text" ch-bind="Price" /><br />
+      </div>
+    </div>
+
+    <div id="test12">
+      <div id="test12_inner">
+        <h3>Test12</h3>
+        <div><br /></div>
+        <h2>This car is //Speed// and //Attributes.Color// and //Price//!</h2>
+
+        <label>Speed</label><br />
+        <select id="txtTest12_Speed" ch-bind="Speed">
+          <option value="Very Fast">Very Fast</option>
+          <option value="Fast">Fast</option>
+          <option value="Slow">Slow</option>
+          <option value="Very Slow">Very Slow</option>
+        </select>
+
+        <input id="txtTest12_Speed2" type="text" ch-bind="Speed" /><br /><br />
+
+        <label>Color</label><br />
+        <select id="txtTest12_Color" ch-bind="Attributes.Color">
+          <option value="Green">Green</option>
+          <option value="Blue">Blue</option>
+          <option value="Orange">Orange</option>
+        </select>
+
+        <label>Price</label><br />
+        <input id="txtTest12_Price" type="text" ch-bind="Price" /><br />
+      </div>
+    </div>
+
+    <div id="test13">
+      <div id="test13_inner">
+        <h3>Test13</h3>
+        <div><br /></div>
+        <p>//Speech//</p>
+
+        <label>Speech</label><br />
+        <textarea id="txtTest13_Speech" style="width: 20em" ch-bind="Speech" rows="8"></textarea>
+
+      </div>
+    </div>
+
+    <div id="test14">
+      <div id="test14_inner" ch-style="background-color: //Color//">
+        <h3>Test14</h3>
+        <div><br /></div>
+
+        <label>Color</label><br />
+        <select id="txtTest14_Color" ch-bind="Color">
+          <option value="green">Green</option>
+          <option value="blue">Blue</option>
+          <option value="orange">Orange</option>
+        </select>
+
+      </div>
+    </div>
+
+    <div id="test15">
+      <div id="test15_inner" ch-style="background-color: //Attributes.Color//">
+        <h3>Test15</h3>
+        <div><br /></div>
+
+        <label>Color</label><br />
+        <select id="txtTest15_Color" ch-bind="Attributes.Color">
+          <option value="green">Green</option>
+          <option value="blue">Blue</option>
+          <option value="orange">Orange</option>
+        </select>
+
+      </div>
+    </div>
+
+    <div id="test16">
+      <div id="test16_inner">
+        <h3>Test16</h3>
+        <div><br /></div>
+
+        <ch-bind on="Models">
+          <div id="test16_//Name//">
+            <h4>//Year// //$$parent.$$parent.Make// //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+            <p>Index: //$$index//</p><br />
+
+            <button ch-click="Year: Year + 1">Make Newer</button>
+
+          </div>
+        </ch-bind>
+
+      </div>
+    </div>
+
+    <div id="test17">
+      <div id="test17_inner">
+        <h3>Test17</h3>
+        <div><br /></div>
+
+        <ch-variable name="make">//Make// is cool!</ch-variable>
+
+        <h2>Make: //$make//</h2>
+        <ch-bind on="Models">
+          <div id="test17_//Name//">
+            <h4>//Year// //$make// //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+            <p>Index: //$$index//</p><br />
+
+          </div>
+        </ch-bind>
+        <button ch-click="Make: 'Audi'">Make Foreign</button>
+
+      </div>
+    </div>
+
+    <div id="test18">
+      <div id="test18_inner">
+        <h3>Test18</h3>
+        <div><br /></div>
+
+        <p>//this.TransformValue(MountainName)//</p>
+
+      </div>
+    </div>
+
+    <div id="test19">
+      <div id="test19_inner">
+        <h3>Test19</h3>
+        <div><br /></div>
+
+        <h2>Current Date: //this.FormatDate(CurrentDate, 'M d, yy')//</h2>
+        <br />
+        <br />
+        <datepicker id="dtCurrentDate" format="M d, yy" ch-bind="CurrentDate"></datepicker>
+        <br />
+        <br />
+        <datepicker id="dtCurrentDate2" format="M d, yy" ch-bind="CurrentDate"></datepicker>
+        <br />
+        <br />
+        <br />
+        <br />
+
+      </div>
+    </div>
+
+    <div id="test20">
+      <div id="test20_inner">
+        <h3>Test20</h3>
+        <div><br /></div>
+
+        blah blah blah
+
+        <ch-bind on="Models">
+          <div class="car" id="test20_//Name//">
+            <h4>//Year// //$$parent.$$parent.Make// //Name//</h4>
+
+            <h5>Year: //Year//</h5>
+            <label>Color: //Color//</label><br />
+            <p>Index: //$$index//</p>
+
+          </div>
+
+        </ch-bind>
+
+        <button id="btnTest20_1" ch-click="AddNewCar">Add New Car</button>
+        <button id="btnTest20_2" ch-click="AddAndRemoveCar">Add And Remove Car</button>
+
+      </div>
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test21">
+      <div id="test21_inner">
+        <h3>Test21</h3>
+        <div><br /></div>
+
+        blah blah blah
+
+        <ch-if test="Make == 'Chevy'">
+          <div class="car" id="test21_//Name//">
+            <h4>//Year// Chevy //Name// hey ho</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+        </ch-if>
+
+        <ch-if test="Make == 'Audi'">
+          <div class="car" id="test21_//Name//">
+            <h4>//Year// Audi //Name// blah blah</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+        </ch-if>
+
+        <ch-if test="Make == 'Land Rover'">
+          <div class="car" id="test21_//Name//">
+            <h4>//Year// Land Rover //Name// yada yada</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+        </ch-if>
+
+        <button id="btnTest21_1" ch-click="MakeAudi">Audi</button>
+        <button id="btnTest21_2" ch-click="MakeLandRover">Land Rover</button>
+
+      </div>
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test22">
+      <div id="test22_inner">
+        <h3>Test22</h3>
+        <div><br /></div>
+
+        blah blah blah
+
+        <ch-if test="Make == 'Chevy'">
+          <div class="car">
+            <h4>//Year// Chevy //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+
+        </ch-if>
+        <ch-elseif test="Make == 'Audi'">
+          <div class="car">
+            <h4>//Year// Audi //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+
+        </ch-elseif>
+        <ch-else>
+          <div class="car">
+            <h4>//Year// Land Rover //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+
+        </ch-else>
+
+        <button id="btnTest22_1" ch-click="MakeAudi">Audi</button>
+        <button id="btnTest22_2" ch-click="MakeLandRover">Land Rover</button>
+
+      </div>
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test23">
+
+      <div id="test23_inner">
+        <h3>Test23</h3>
+        <div><br /></div>
+
+        <ch-call-template name="Car" owner="//Owner//"></ch-call-template>
+
+        <button id="btnTest23_1" ch-click="MakeAudi">Audi</button>
+        <button id="btnTest23_2" ch-click="MakeLandRover">Land Rover</button>
+
+      </div>
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test24">
+
+      <h3>Test24</h3>
+      <div><br /></div>
+
+      <ch-call-template name="Vehicles" other="Boat"></ch-call-template>
+
+      <button id="btnTest24_1" ch-click="MakeAudi">Audi</button>
+      <button id="btnTest24_2" ch-click="MakeLandRover">Land Rover</button>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test25">
+
+      <h3>Test25</h3>
+      <div><br /></div>
+
+      <ch-call-template name="Vehicles" other="Boat"></ch-call-template>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test26">
+
+      <h3>Test26</h3>
+      <div><br /></div>
+
+      <div id="test26_1"><ch-call-template name="Automobile"></ch-call-template></div>
+      <div id="test26_2"><ch-call-template name="Automobile2"></ch-call-template></div>
+      <div id="test26_3"><ch-call-template name="Automobile3"></ch-call-template></div>
+      <div id="test26_4"><ch-call-template name="Automobile4"></ch-call-template></div>
+      <div id="test26_5"><ch-call-template name="Automobile5"></ch-call-template></div>
+      <div id="test26_6">
+        <ch-call-template name="Automobile6">
+          <h6>Owner: //Owner//</h6><br />
+          <div class="ffff">ffff</div>
+        </ch-call-template>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test27">
+
+      <h3>Test27</h3>
+      <div><br /></div>
+
+      <div id="test27_1"><ch-call-template name="Boat"></ch-call-template></div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test28">
+      <div id="test28_inner">
+        <h3>Test28</h3>
+        <div><br /></div>
+
+        blah blah blah
+
+        <ch-if test="Make == 'Chevy'">
+          <div class="car">
+            <h4>//Year// Chevy //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+        </ch-if>
+
+        <ch-if test="Make == 'Audi'">
+          <div class="car">
+            <h4>//Year// Audi //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+        </ch-if>
+
+        <ch-if test="Make == 'Land Rover'">
+          <div class="car">
+            <h4>//Year// Land Rover //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+        </ch-if>
+
+        <button id="btnTest28_1" ch-click="MakeAudi">Audi</button>
+        <button id="btnTest28_2" ch-click="MakeLandRover">Land Rover</button>
+
+      </div>
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test29">
+      <div id="test29_inner">
+        <h3>Test29</h3>
+        <div><br /></div>
+
+        <ch-bind on="Models">
+          <div id="test29_//$$index + 1//">
+            <h4>//Year// //$$parent.$$parent.Make// //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+            <p>Index: //$$index//</p><br />
+
+          </div>
+        </ch-bind>
+
+        <button ch-click="ChangeModels">Change Models</button>
+
+      </div>
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test30">
+      <h3>Test30</h3>
+      <br />
+
+      <ch-bind on="Info">
+        <div>
+          <h4>//Year// //$$parent.Make// //Name//</h4>
+
+          <h5>Year: //Year//</h5><br />
+          <label>Color: //Color//</label><br />
+
+        </div>
+      </ch-bind>
+
+      <button ch-click="ChangeModel">Change Models</button>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test31">
+      <div id="test31_inner">
+        <h3>Test31</h3>
+        <div><br /></div>
+
+        blah blah blah
+
+        <ch-if test="Make == 'Chevy'">
+          <div class="car">
+            <h4>//Year// Chevy //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+        </ch-if>
+
+        <ch-elseif test="Make == 'Audi'">
+          <div class="car">
+            <h4>//Year// Audi //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+        </ch-elseif>
+
+        <ch-else>
+          <div class="car">
+            <h4>//Year// Land Rover //Name//</h4>
+
+            <h5>Year: //Year//</h5><br />
+            <label>Color: //Color//</label><br />
+          </div>
+        </ch-else>
+
+        <button id="btnTest31_1" ch-click="MakeAudi">Audi</button>
+        <button id="btnTest31_2" ch-click="MakeLandRover">Land Rover</button>
+
+      </div>
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test32">
+      <h3>Test32</h3>
+      <div><br /></div>
+
+      <chooser bind="Menu" onchoose="OnChooseModel">
+        //Caption//
+      </chooser>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test33">
+      <h3>Test33</h3>
+      <div><br /></div>
+
+      <ch-action name="bob">
+        <classsetter select="#test33" add="blue">.</classsetter>
+        <call>MakeAudi</call>
+      </ch-action>
+
+      <ch-action name="LandRover">
+        <call>MakeLandRover</call>
+      </ch-action>
+
+      <ch-action name="fred">
+        <classsetter select="#test33" add="green" remove="blue">.</classsetter>
+        <call>^LandRover</call>
+      </ch-action>
+
+      <ch-action name="ted">
+        <modelsetter name="Make" value="Studebaker">.</modelsetter>
+        <modelsetter name="Year" value="1955">.</modelsetter>
+        <modelsetter name="Name" value="Royale">.</modelsetter>
+      </ch-action>
+
+      <div id="test33_txt">
+        //Year// //Make// //Name//
+      </div>
+
+      <button id="btnTest33_1" ch-click="^bob">Make Green Audi</button>
+      <button id="btnTest33_2" ch-click="^fred">Make Land Rover</button>
+      <button id="btnTest33_3" ch-click="^ted">Make Studebaker</button>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test34">
+      <h3>Test34</h3>
+      <div><br /></div>
+
+      <ch-action name="bob">
+        <classsetter select="#test34" add="blue">.</classsetter>
+        <call>MakeAudi</call>
+      </ch-action>
+
+      <ch-action name="LandRover">
+        <call>MakeLandRover</call>
+      </ch-action>
+
+      <ch-action name="fred">
+        <classsetter select="#test34" add="green" remove="blue">.</classsetter>
+        <call>^LandRover</call>
+      </ch-action>
+
+      <ch-action name="ted">
+        <fadeout select="#test34">
+          <fadein select="#test34" speed="slow">
+            <modelsetter name="Make" value="Studebaker">.</modelsetter>
+            <modelsetter name="Year" value="1955">.</modelsetter>
+            <modelsetter name="Name" value="Royale">.</modelsetter>
+            <writeconsole>This is a message I'm writing to the console: //Make//</writeconsole>
+          </fadein>
+        </fadeout>
+      </ch-action>
+
+      <ch-action name="ned">
+        <slideup select="#test34">
+          <slidedown select="#test34" speed="slow">
+            <modelsetter name="Make" value="Aston-Martin">.</modelsetter>
+            <modelsetter name="Year" value="1967">.</modelsetter>
+            <modelsetter name="Name" value="DB4">.</modelsetter>
+            <writeconsole>This is a message I'm writing to the console: //Make//</writeconsole>
+          </slidedown>
+        </slideup>
+      </ch-action>
+
+      <div id="test34_txt">
+        //Year// //Make// //Name//
+      </div>
+
+      <button id="btnTest34_1" ch-click="^bob">Make Green Audi</button>
+      <button id="btnTest34_2" ch-click="^fred">Make Land Rover</button>
+      <button id="btnTest34_3" ch-click="^ted">Make Studebaker</button>
+      <button id="btnTest34_4" ch-click="^ned">Make Aston-Martin</button>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test35">
+      <h3>Test35</h3>
+      <div><br /></div>
+
+      <ch-action name="ted">
+        <confirm message="Click OK to make this test pass.">
+          <modelsetter name="Make" value="Studebaker">.</modelsetter>
+          <modelsetter name="Year" value="1955">.</modelsetter>
+          <modelsetter name="Name" value="Royale">.</modelsetter>
+        </confirm>
+      </ch-action>
+
+      <div id="test35_txt">
+        //Year// //Make// //Name//
+      </div>
+
+      <button id="btnTest35_1" ch-click="^ted">Make Studebaker</button>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test36">
+      <h3>Test36</h3>
+      <div><br /></div>
+
+      <ch-action name="fred">
+        <validate report-all="false" report-to="#ValidateFailures">
+          <model name="Make" required="true; Missing Make!">.</model>
+          <model name="Make" minlength="7; The name of the Make is too short!">.</model>
+          <model name="Year" minvalue="1898; The year is too far in the past">.</model>
+          <model name="Year" minvalue="1898; The year is too far in the past" maxvalue="2017; The year is in the future">.</model>
+          <onvalidate>
+            <call>Submit</call>
+          </onvalidate>
+        </validate>
+      </ch-action>
+
+      <ch-action name="ted">
+        <validate report-all="true" report-to="#ValidateFailures">
+          <model name="Make" required="true; Missing Make!">.</model>
+          <model name="Make" minlength="7; The name of the Make is too short!">.</model>
+          <model name="Year" minvalue="1898; The year is too far in the past">.</model>
+          <model name="Year" minvalue="1898; The year is too far in the past" maxvalue="2017; The year is in the future">.</model>
+          <onvalidate>
+            <call>Submit</call>
+          </onvalidate>
+        </validate>
+      </ch-action>
+
+      <div id="test36_form">
+        <input id="test36_Make" type="text" placeholder="Make" ch-bind="Make" />
+      </div>
+
+      <div id="ValidateFailures">
+        <br />
+      </div>
+
+      <div id="ValidateSuccess">
+        <br />
+      </div>
+
+      <button id="btnTest36_1" ch-click="^fred">Submit</button>
+      <button id="btnTest36_2" ch-click="^ted">Submit</button>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test37">
+      <h3>Test37</h3>
+      <div><br /></div>
+
+      <div id="test37" ch-class="green: Mode == 'admin', orange: Mode == 'edit', blue" ch-mouseenter="Mode: 'admin'" ch-mouseleave="Mode: 'edit'">
+        <br />
+        <br />
+        <br />
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test38">
+      <h3>Test38</h3>
+      <div><br /></div>
+
+      <div id="test38_contents">
+        <ch-bind on="Cars" sort="Make">
+          <div>//Make//</div>
+        </ch-bind>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test39">
+      <h3>Test39</h3>
+      <div><br /></div>
+
+      <div id="test39_contents">
+        <ch-bind on="Cars" sort="Make">
+          <ch-call-template name="JustMake"></ch-call-template>
+        </ch-bind>
+      </div>
+
+    </div>
+
+    <ch-template name="JustMake">
+      <div>//Make//</div>
+    </ch-template>
+
+    <!-- ***************************************************************** -->
+    <div id="test40">
+      <h3>Test40</h3>
+      <div><br /></div>
+
+      <div id="test40_contents">
+        <ch-bind on="Cars" sort="Make">
+          <ch-variable name="Century">
+            <ch-if test="Year &lt; 2000">20th</ch-if>
+            <ch-else>21st</ch-else>
+          </ch-variable>
+          <ch-call-template name="Make"></ch-call-template>
+        </ch-bind>
+      </div>
+
+    </div>
+
+    <div id="test41">
+      <h3>Test41</h3>
+      <div><br /></div>
+      <p>//Year// //Make// //Model//</p>
+
+      <button id="btn41">
+        <ch-action>
+          <changevehicle make="Chevy" model="Corvette" year="1964">.</changevehicle>
+        </ch-action>
+        Do It
+      </button><br />
+    </div>
+
+    <div id="test42">
+      <h3>Test42</h3>
+      <div><br /></div>
+      <div id="test42_content" style="height: 80px; background-color: lawngreen" ch-visible="Year == 1965">
+
+        <ch-action trigger="visibility: true">
+          <fadeIn speed="800">.</fadeIn>
+        </ch-action>
+
+        <ch-action trigger="visibility: false">
+          <fadeOut speed="800">.</fadeOut>
+        </ch-action>
+
+        <p>//Year// //Make// //Model//</p>
+      </div>
+
+      <button id="btn42_1">
+        <ch-action>
+          <changevehicle make="Chevy" model="Corvette" year="1969">.</changevehicle>
+          <visibilitysetter select="#test42_content" value="false">.</visibilitysetter>
+        </ch-action>
+        Disappear
+      </button><br />
+
+      <button id="btn42_2">
+        <ch-action>
+          <changevehicle make="Pontiac" model="GTO" year="1965">.</changevehicle>
+          <visibilitysetter select="#test42_content" value="true">.</visibilitysetter>
+        </ch-action>
+        Appear
+      </button><br />
+    </div>
+
+    <div id="test43">
+      <h3>Test43</h3>
+      <div><br /></div>
+      <div id="freddym">
+        <p>//Year// //Make// //Model//</p>
+
+        <img src="test1.jpg" /><br />
+        <img src="test2.jpg" style="height: 0" />
+      </div>
+      <br /><br />
+      <button id="btn43_1">
+        <ch-action>
+          <animate height="0" select="#freddym img:first-of-type" speed="500">
+            <changevehicle make="Chevy" model="Corvette" year="1969">.</changevehicle>
+          </animate>
+          <animate height="244" select="#freddym img:last-of-type" speed="500">.</animate>
+        </ch-action>
+
+        Go
+      </button>
+
+      <button id="btn43_2">
+        <ch-action>
+          <animate height="0" select="#freddym img:last-of-type" speed="500">
+            <changevehicle make="Pontiac" model="Firebird" year="1967">.</changevehicle>
+          </animate>
+          <animate height="244" select="#freddym img:first-of-type" speed="500">.</animate>
+        </ch-action>
+
+        Back
+      </button><br /><br /><br /><br /><br /><br /><br /><br /><br /><br />
+
+
+    </div>
+
+    <div id="test44">
+      <h3>Test44</h3>
+      <div><br /></div>
+      <div id="freddym_44">
+        <p>//Year// //Make// //Model//</p>
+
+        <img src="test1.jpg" />
+        <img src="test2.jpg" style="opacity: 0; z-index: 400; margin-left: -400px" />
+      </div>
+      <br /><br />
+      <button id="btn44_1">
+        <ch-action>
+          <animate opacity="0" select="#freddym_44 img:first-of-type" speed="200">
+            <animate opacity="1" select="#freddym_44 img:last-of-type" speed="300">
+              <changevehicle make="Chevy" model="Corvette" year="1969">.</changevehicle>
+            </animate>
+          </animate>
+        </ch-action>
+
+        Go
+      </button>
+
+      <button id="btn44_2">
+        <ch-action>
+          <animate opacity="0" select="#freddym_44 img:last-of-type" speed="200">
+            <animate opacity="1" select="#freddym_44 img:first-of-type" speed="300">
+              <changevehicle make="Pontiac" model="Firebird" year="1967">.</changevehicle>
+            </animate>
+          </animate>
+        </ch-action>
+
+        Back
+      </button><br /><br /><br /><br /><br /><br /><br /><br /><br /><br />
+
+    </div>
+
+    <div id="test45">
+      <h3>Test45</h3>
+      <ch-variable name="blob">18</ch-variable>
+
+      <ch-bind on="Names">
+        <ch-variable name="bob1">//$$index//</ch-variable>
+
+        <div>
+          <ch-variable name="bob2">//$$index//</ch-variable>
+          <ch-if test="Name == 'Fred' and $blob == 24">
+            <input id="test45_//$bob1//" data-index="//$bob1//" type="text" value="Jack" />
+          </ch-if>
+          <ch-elseif test="Name == 'Fred' and $blob == 18">
+            <input id="test45_//$bob1//" data-index="//$bob1//" type="text" value="Fred" />
+          </ch-elseif>
+          <ch-elseif test="Name == 'Wilma' and $blob == 24">
+            <input id="test45_//$bob1//" data-index="//$bob1//" type="text" value="Betty" />
+          </ch-elseif>
+          <ch-elseif test="Name == 'Wilma' and $blob == 18">
+            <input id="test45_//$bob1//" data-index="//$bob1//" type="text" value="Wilma" />
+          </ch-elseif>
+          <ch-else>
+            <input id="test45_//$bob1//" data-index="//$bob1//" type="text" value="John" />
+          </ch-else>
+
+          <div id="bob1_//$$index//">//$bob1//</div>
+          <div id="bob2_//$$index//">//$bob2//</div>
+        </div>
+      </ch-bind>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test46">
+      <h3>Test46</h3>
+      <div><br /></div>
+
+      <div id="test46_contents">
+        <ul>
+          <ch-bind on="Cars.MyCars">
+            <ch-if test="Year < 2000">
+              <ch-if test="Color != 'Tan'">
+                <li>
+                  //Year// //Make//
+                </li>
+                <li>
+                  //Color//
+                </li>
+              </ch-if>
+            </ch-if>
+          </ch-bind>
+        </ul>
+
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test47">
+      <h3>Test47</h3>
+      <div><br /></div>
+
+      <div id="test47_txt">
+        <input value="bob1" />
+        //Color// //Year// //Make//
+        <input value="bob2" />
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test48">
+      <h3>Test48</h3>
+      <div><br /></div>
+
+      <chooser bind="AllMakes" sort="Make" onchoose="OnChooseItem" ch-watch="false">
+        //Make//
+      </chooser>
+
+      My favorite car is:<br /><br />
+
+      <div id="test48_txt">
+        <ch-bind on="CurrentChoiceModel">
+          //Color// //Year// //Make//
+        </ch-bind>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test49">
+      <h3>Test49</h3>
+      <div><br /></div>
+
+      <ch-variable name="FullName">
+        <ch-bind on="CurrentPerson">
+          <ch-call-template name="DisplayName"></ch-call-template>
+        </ch-bind>
+      </ch-variable>
+
+      My ancestor is:<br /><br />
+
+      <div id="test49_txt">
+        //$FullName//
+      </div>
+
+      <button id="btn49_1" ch-click="MakeSomebodyElse">Make Somebody Else</button>
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test50">
+      <h3>Test50</h3>
+      <div><br /></div>
+
+      <div id="test50_panel">
+
+        <ch-action name="MakeDifferent">
+          <classsetter select="$parent.$parent.$parent" add="green">.</classsetter>
+          <call>MakeSomebodyElse</call>
+        </ch-action>
+
+        <div>
+          <h1>This is a form</h1>
+
+          <ch-bind on="CurrentPerson">
+            <p id="test50_txt">
+              //Title// //GivenName// //Surname// //Suffix//
+            </p>
+          </ch-bind>
+
+          <div>
+            <h1>This is a tool bar</h1>
+            <br />
+            <br />
+            <br />
+            <button id="btn50_1" ch-click="^MakeDifferent">Make Different</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test51">
+      <h3>Test51</h3>
+      <div><br /></div>
+
+      <div id="test51_panel">
+
+        <div>
+          <h1>This is a form</h1>
+
+          <ch-bind on="CurrentPerson">
+            <p id="test51_txt">
+              //Title// //GivenName// //Surname// //Suffix//
+            </p>
+          </ch-bind>
+
+          <div>
+            <h1>This is a tool bar</h1>
+            <br />
+            <br />
+            <br />
+            <button id="btn51_1" ch-click="^MakeTotallyDifferent">Make Totally Different</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test52">
+      <h3>Test52</h3>
+      <div><br /></div>
+
+      <div id="test52_panel">
+
+        <div>
+          <h1>This is a form</h1>
+
+          <cx:table class="bob">
+            <ch-bind on="Makes">
+              <ch-if test="Id != 'studebaker'">
+                <cx:tr>
+                  <cx:td>
+                    //Make//
+                  </cx:td>
+                  <cx:td>
+                    //Color//
+                  </cx:td>
+                  <cx:td>
+                    //Make//
+                  </cx:td>
+                  <cx:td>
+                    //Year//
+                  </cx:td>
+                  <ch-if test="Id == 'audi'">
+                    <cx:td>Awesome</cx:td>
+                  </ch-if>
+                  <ch-else>
+                    <cx:td>Ehh!</cx:td>
+                  </ch-else>
+                </cx:tr>
+              </ch-if>
+            </ch-bind>
+          </cx:table>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test53">
+      <h3>Test53</h3>
+      <div><br /></div>
+
+      <ch-variable name="config">//Config//</ch-variable>
+
+      <div id="test53_panel">
+
+        <div>
+          <h1>These are //$config.Owner//'s cars:</h1>
+
+          <cx:table class="bob">
+            <ch-bind on="Makes">
+              <ch-if test="$config.ShowOldCars or Year >= 1960">
+                <cx:tr>
+                  <cx:td>
+                    //Make//
+                  </cx:td>
+                  <cx:td>
+                    //Color//
+                  </cx:td>
+                  <cx:td>
+                    //Make//
+                  </cx:td>
+                  <cx:td>
+                    //Year//
+                  </cx:td>
+                  <ch-if test="Id == $config.AwesomeCar">
+                    <cx:td>Awesome</cx:td>
+                  </ch-if>
+                  <ch-else>
+                    <cx:td>Ehh!</cx:td>
+                  </ch-else>
+                </cx:tr>
+              </ch-if>
+            </ch-bind>
+          </cx:table>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test54">
+      <h3>Test54</h3>
+      <div><br /></div>
+
+      <ch-variable name="MAKES">//Makes//</ch-variable>
+      <ch-variable name="SINGLE">//SingleMake//</ch-variable>
+      <ch-variable name="FAVORITES">//Favorites//</ch-variable>
+
+      <div id="test54_panel">
+
+        <div>
+
+          <div id="test54_test1">
+            <ch-bind on="SingleMake">
+              <div>//Color// //Make// //Year//</div>
+            </ch-bind>
+          </div>
+
+          <br /><br />
+
+          <div id="test54_test2">
+            <ch-bind on="Favorites.SingleMake">
+              <div>//Color// //Make// //Year//</div>
+            </ch-bind>
+          </div>
+
+          <br /><br />
+
+          <div id="test54_test3">
+            <ch-bind on="$SINGLE">
+              <div>//Color// //Make// //Year//</div>
+            </ch-bind>
+          </div>
+
+          <br /><br />
+
+          <div id="test54_test4">
+            <ch-bind on="$FAVORITES.SingleMake">
+              <div>//Color// //Make// //Year//</div>
+            </ch-bind>
+          </div>
+
+          <br /><br />
+
+          <div id="test54_test5">
+            <ch-bind on="$MAKES">
+              <div>//Color// //Make// //Year//</div>
+            </ch-bind>
+          </div>
+
+          <br /><br />
+
+          <div id="test54_test6">
+            <ch-bind on="$FAVORITES.BestFavorites.Makes">
+              <div>//Color// //Make// //Year//</div>
+            </ch-bind>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test55">
+      <h3>Test55</h3>
+      <div><br /></div>
+
+      <ch-variable name="MAKES">//Makes//</ch-variable>
+      <ch-variable name="SINGLE">//SingleMake//</ch-variable>
+      <ch-variable name="FAVORITES">//Favorites//</ch-variable>
+
+      <div id="test55_panel">
+
+        <div>
+
+          <div id="test55_test1">
+            <ch-call-template name="DisplayName"></ch-call-template>'s Birthday
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test56">
+      <h3>Test56</h3>
+      <div><br /></div>
+
+      <ch-action name="ClickEvent">
+        <modelsetter name="$$root.CurrentEvent" value="$$target">.</modelsetter>
+        <modelsetter name="$$root.CurrentDate" value="//Daydex//">.</modelsetter>
+        <modelsetter name="$$root.NumDays" value="1">.</modelsetter>
+        <modelsetter name="$$root.FavoriteDaydex" value="//$$root.Favorite.Daydex//">.</modelsetter>
+        <reloadmodel>.</reloadmodel>
+      </ch-action>
+
+      <div id="test56_panel">
+
+        <div>
+
+          <div id="test56_test1">
+            <ul>
+              <ch-bind on="Events">
+                <li><button id="test56_btn//$$index//" ch-click="^ClickEvent">//Name//</button></li>
+              </ch-bind>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test57">
+      <h3>Test57</h3>
+      <div><br /></div>
+
+      <ch-action name="ClickEvent">
+        <SessionSetter name="Favorite" value="//Favorite//">.</SessionSetter>
+        <SessionGetter name="Favorite">
+          <modelsetter name="$$root.CurrentFavorite" value="//$$result.Favorite//">.</modelsetter>
+        </SessionGetter>
+      </ch-action>
+
+      <ch-action name="ClickEvent2">
+        <sessionsetter name="make" value="Pontiac">.</sessionsetter>
+        <sessionsetter name="year" value="1965">.</sessionsetter>
+        <sessiongetter make="string" year="number" required="all">
+          <modelsetter name="$$root.Make" value="//$$result.make//">.</modelsetter>
+          <modelsetter name="$$root.Year" value="//$$result.year//">.</modelsetter>
+        </sessiongetter>
+      </ch-action>
+
+      <ch-action name="ClickEvent3">
+        <sessionsetter name="Make" value="Pontiac">.</sessionsetter>
+        <sessiongetter make="string" yyear="number" required="all">
+          <modelsetter name="$$root.Make3" value="//$$result.make//">.</modelsetter>
+          <modelsetter name="$$root.Year3" value="//$$result.yyear//">.</modelsetter>
+        </sessiongetter>
+      </ch-action>
+
+      <div id="test57_panel">
+
+        <div>
+          <div id="test57_test1">
+            <div>//CurrentFavorite//</div>
+            <button id="test57_btn1" ch-click="^ClickEvent">Favorite</button>
+          </div>
+
+          <div id="test57_test2">
+            <div>//Year// //Make//</div>
+            <button id="test57_btn2" ch-click="^ClickEvent2">Make and Year</button>
+          </div>
+
+          <div id="test57_test3">
+            <div>//Year3// //Make3//</div>
+            <button id="test57_btn3" ch-click="^ClickEvent3">Make and Year</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test58">
+      <h3>Test58</h3>
+      <div><br /></div>
+
+      <ch-action name="ClickEvent">
+        <storagesetter name="Favorite" value="//Favorite//">.</storagesetter>
+        <storagegetter name="Favorite">
+          <modelsetter name="$$root.CurrentFavorite" value="//$$result.Favorite//">.</modelsetter>
+        </storagegetter>
+      </ch-action>
+
+      <ch-action name="ClickEvent2">
+        <storagesetter name="make" value="Pontiac">.</storagesetter>
+        <storagesetter name="year" value="1965">.</storagesetter>
+        <storagegetter make="string" year="number" required="all">
+          <modelsetter name="$$root.Make" value="//$$result.make//">.</modelsetter>
+          <modelsetter name="$$root.Year" value="//$$result.year//">.</modelsetter>
+        </storagegetter>
+      </ch-action>
+
+      <ch-action name="ClickEvent3">
+        <storagesetter name="make" value="Pontiac">.</storagesetter>
+        <storagegetter make="string" yyear="number" required="all">
+          <modelsetter name="$$root.Make3" value="//$$result.make//">.</modelsetter>
+          <modelsetter name="$$root.Year3" value="//$$result.yyear//">.</modelsetter>
+        </storagegetter>
+      </ch-action>
+
+      <div id="test58_panel">
+
+        <div>
+          <div id="test58_test1">
+            <div>//CurrentFavorite//</div>
+            <button id="test58_btn1" ch-click="^ClickEvent">Favorite</button>
+          </div>
+
+          <div id="test58_test2">
+            <div>//Year// //Make//</div>
+            <button id="test58_btn2" ch-click="^ClickEvent2">Make and Year</button>
+          </div>
+
+          <div id="test58_test3">
+            <div>//Year3// //Make3//</div>
+            <button id="test58_btn3" ch-click="^ClickEvent3">Make and Year</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ***************************************************************** -->
+    <div id="test59">
+      <h3>Test59</h3>
+      <div><br /></div>
+
+      <ch-action name="ClickEvent">
+        <cookiesetter name="Favorite" value="//Favorite//">.</cookiesetter>
+        <cookiegetter name="Favorite">
+          <modelsetter name="$$root.CurrentFavorite" value="//$$result.Favorite//">.</modelsetter>
+        </cookiegetter>
+      </ch-action>
+
+      <ch-action name="ClickEvent2">
+        <cookiesetter name="make" value="Pontiac">.</cookiesetter>
+        <cookiesetter name="year" value="1965">.</cookiesetter>
+        <cookiegetter make="string" year="number" required="all">
+          <modelsetter name="$$root.Make" value="//$$result.make//">.</modelsetter>
+          <modelsetter name="$$root.Year" value="//$$result.year//">.</modelsetter>
+        </cookiegetter>
+      </ch-action>
+
+      <ch-action name="ClickEvent3">
+        <cookiesetter name="make" value="Pontiac">.</cookiesetter>
+        <cookiegetter make="string" yyear="number" required="all">
+          <modelsetter name="$$root.Make3" value="//$$result.make//">.</modelsetter>
+          <modelsetter name="$$root.Year3" value="//$$result.yyear//">.</modelsetter>
+        </cookiegetter>
+      </ch-action>
+
+      <div id="test59_panel">
+
+        <div>
+          <div id="test59_test1">
+            <div>//CurrentFavorite//</div>
+            <button id="test59_btn1" ch-click="^ClickEvent">Favorite</button>
+          </div>
+
+          <div id="test59_test2">
+            <div>//Year// //Make//</div>
+            <button id="test59_btn2" ch-click="^ClickEvent2">Make and Year</button>
+          </div>
+
+          <div id="test59_test3">
+            <div>//Year3// //Make3//</div>
+            <button id="test59_btn3" ch-click="^ClickEvent3">Make and Year</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <ch-template name="DisplayName">
+      <ch-if test="SurnameFirst and NickName">
+        //Title// //Surname// //NickName// //Suffix//
+      </ch-if>
+      <ch-elseif test="SurnameFirst">
+        //Title// //Surname// //GivenName// //Suffix//
+      </ch-elseif>
+      <ch-elseif test="NickName">
+        //Title// //NickName// //Surname// //Suffix//
+      </ch-elseif>
+      <ch-else>
+        //Title// //GivenName// //Surname// //Suffix//
+      </ch-else>
+    </ch-template>
+
+    <ch-template name="Make">
+      <div>//Make//</div>
+      <h6>//$Century//</h6>
+    </ch-template>
+
+  </div>
+
+  <!-- ***************************************************************** -->
+  <div id="testresults">
+    <h1 id="count"></h1>
+    <h2 id="timing"><br /></h2>
+    <div id="testresults_inner">
+      <br />
+    </div>
+  </div>
+
+  <script language="javascript" type="text/javascript" src="jquery-2.2.0.min.js"></script>
+  <script language="javascript" type="text/javascript" src="jquery-ui.min.js"></script>
+  <script language="javascript" type="text/javascript" src="cheetah.min.js"></script>
+  <script language="javascript" type="text/javascript" src="cheetah.jqueryui.js"></script>
+  <script language="javascript" type="text/javascript" src="cheetah.ux.js"></script>
+  <script language="javascript" type="text/javascript" src="test.js"></script>
+  <script language="javascript" type="text/javascript" src="cheetahtest.js"></script>
+
+</body>
+
+</html>
