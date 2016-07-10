@@ -21,10 +21,14 @@ Cheetah has custom elements that are inserted into your HTML (template), e.g.:
   
     1) Use divs with css table styling, i.e.
     
-         .div.table:               { display: table }         
-         .div.table > div:         { display: table-row }
-         .div.table > div > div:   { display: table-cell }
-         
+    Css:
+    
+         div.table:               { display: table }         
+         div.table > div:         { display: table-row }
+         div.table > div > div:   { display: table-cell }
+    
+    Html:
+    
           <div class="table">
             <ch-bind on="Customers">
               <div>
