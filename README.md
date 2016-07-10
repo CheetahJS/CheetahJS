@@ -21,3 +21,6 @@ Fast to learn! Fast to develop! Runs fast in the browser!
 
 ##Requirements
 Currently requires JQuery. This may change in the future.
+
+##Documentation
+Coming soon!
