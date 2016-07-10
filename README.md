@@ -2,7 +2,7 @@
 A Javascript MVVM Framework for fast web development.
 
 ## Templates
-Render your model with templates in a XSLT-like syntax.
+Render your model with templates in a simple XSLT-like syntax.
 
 ## Two-way Binding
 Bind your html elements back to your model. As the user makes changes to form elements your model is updated. Any references to those model items are automatically updated.
