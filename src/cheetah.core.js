@@ -1600,6 +1600,7 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
 
   this.Attributes       = null;
   this.Class            = "";
+  this.Style            = "";
   this.CondResult       = true;
 
   /*****************************************************************************/
@@ -1966,22 +1967,15 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
               break;
 
             case "style":
-              if(this.Watch)
-                this.AddWatcher(vm, new _cheetah.AttributeNodeWatcher(vm, this, name.substr(3), attr.value), _cheetah.Priority.Default, true);
+             // if(this.Watch)
+              //  this.AddWatcher(vm, new _cheetah.AttributeNodeWatcher(vm, this, name.substr(3), attr.value), _cheetah.Priority.Default, true);
 
+              this.Style = attr.value;
               break;
 
             case "class":
               this.Class = attr.value;
               break;
-
-            case "view":
-            {
-              var txt = ch.Evaluate(this.EvaluateText(vm, attr.value));
-
-              aReturn.push(new Cheetah.Attribute("data-view", txt));
-              break;
-            }
 
             case "route":
               this.Route = ch.Evaluate(this.EvaluateText(vm, attr.value));
@@ -2081,6 +2075,9 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
     // Render dynamic classing
     if(this.Watch && !ch.IsEmpty(this.Class))
       this.AddWatcher(vm, new _cheetah.ClassWatcher(vm, this, this.Class), _cheetah.Priority.Default, true);
+
+    if(this.Watch && !ch.IsEmpty(this.Style))
+      this.AddWatcher(vm, new _cheetah.StyleWatcher(vm, this, this.Style), _cheetah.Priority.Default, true);
 
     // Set up event handlers
     this.Events.ForEach( function(event)
@@ -2294,9 +2291,7 @@ _cheetah.Action = function(vm, context, element, parent)
     if(value == "$$target" || value == "//$$target//")
       return model;
 
-    var inject =  {
-                    $$root: vm.ActualViewModel.Model
-                  };
+    var inject =  {};
 
     if(value.indexOf("$$result") == 0 || value.indexOf("//$$result") == 0)
       inject["$$result"] = evt.$$result;
@@ -2758,10 +2753,11 @@ _cheetah.Action = function(vm, context, element, parent)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.ValidatorItem = function(element)
+_cheetah.ValidatorItem = function(vm, element)
 {
   var _name         = ch.AttributeValue(element, "name");
   var _validators   = [];
+  var _expr         = CreateCondition(vm, element);
 
   this.IsValid = !ch.IsEmpty(_name);
   this.ErrorMessage = "";
@@ -2808,6 +2804,9 @@ _cheetah.ValidatorItem = function(element)
   /*****************************************************************************/
   this.Validate = function(vm, evt, context, msgs, firstOnly) 
   {
+    if(!EvalCondition(_expr, evt, context))
+      return true;
+
     var model   = ch.Coalesce(evt.$model, context.Model);
     var isValid = true;
 
@@ -2888,7 +2887,7 @@ _cheetah.Validator = function(vm, context, element)
           // Model is only thing we know how to validate
           case "model":
           {
-            var item = new _cheetah.ValidatorItem(childNode);
+            var item = new _cheetah.ValidatorItem(vm, childNode);
 
             if(item.IsValid)
               _items.push(item);
@@ -3567,7 +3566,7 @@ _cheetah.ClassWatcher = function(vm, context, expr)
 
     parts.ForEach( function(p) 
     { 
-      var cs = new ClassSetter(p);
+      var cs = new AttributeSetter(p);
 
       self.Parts.push(cs); 
 
@@ -3578,7 +3577,7 @@ _cheetah.ClassWatcher = function(vm, context, expr)
 
   /*****************************************************************************/
   /*****************************************************************************/
-  function ClassSetter(expr)
+  function AttributeSetter(expr)
   {
      var indx = expr.indexOf(":");
 
@@ -3604,10 +3603,88 @@ _cheetah.ClassWatcher = function(vm, context, expr)
              c = ch.Evaluate(staticC) + " " + c;
 
           context.NewElement.className = c;
+
           return(true);
        }
 
        return(false);
+     }
+  }
+}
+
+/*****************************************************************************/
+/*****************************************************************************/
+_cheetah.StyleWatcher = function(vm, context, expr)
+{
+  _cheetah.ModelWatcher.call(this, vm, context);
+
+  this.Static = context.EvaluateText(vm, ch.AttributeValue(context.NewElement, "style"));
+  this.Parts  = [];
+  
+  /*****************************************************************************/
+  this.Eval = function(vm, force)
+  { 
+    if(force || this.ModelChanged())
+    {
+      var self =  this;
+      
+      // First do the static parts
+      if(!ch.IsEmpty(this.Static))
+      {
+        var staticParts = this.Static.split(";");
+ 
+        staticParts.ForEach
+        (
+          function(style)
+          {
+            var parts = style.split(":");
+
+            Cheetah.Builder.css(self.Context.NewElement, parts[0], parts[1]);
+          }
+        );
+      }
+
+      // Then do dynamic parts (they'll override static if the same name)
+      this.Parts.ForEach
+      (
+        function(ss)
+        {
+          var val = ss.Eval(self.Context);
+
+          Cheetah.Builder.css(self.Context.NewElement, ss.Name, val);
+        }
+      );
+    }
+  }
+
+  /*****************************************************************************/
+  // Constructor
+  { 
+    var parts = expr.split(";");
+    var self  = this;
+
+    parts.ForEach( function(p) 
+    { 
+      var ss = new StyleSetter(p);
+
+      self.Parts.push(ss); 
+      self.AddProperties(context, ss.Expression.ModelTokens);
+    });
+  }
+
+  /*****************************************************************************/
+  /*****************************************************************************/
+  function StyleSetter(expr)
+  {
+     var indx = expr.indexOf(":");
+
+     this.Name       = $.trim(expr.substr(0, indx));
+     this.Expression = vm.CreateExpression(expr.substr(indx+1));
+
+     /*****************************************************************************/
+     this.Eval = function(context)
+     {
+       return this.Expression.Eval(context);
      }
   }
 }

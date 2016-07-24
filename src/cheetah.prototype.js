@@ -293,7 +293,9 @@ function _findMatching(list, fn)
 
     if(fn(item))
     {
-      item.$matchingIndex = i;
+      if(typeof item === "object")
+        item.$matchingIndex = i;
+
       return(item);
     }
   }

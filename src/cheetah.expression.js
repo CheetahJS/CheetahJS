@@ -43,7 +43,14 @@
         model = ch.Coalesce(model, ec.Model);
 
         if(_isFn)
+        {
+          if(!injected)
+            injected = {};
+
+          injected.$$root = _vm.Model;
+
           return(fn(_vm, model, injected, ec));
+        }
       
         return(model[fn]);
       }

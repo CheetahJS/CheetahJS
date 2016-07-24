@@ -390,6 +390,9 @@ Cheetah.DOMBuilder = function()
   /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.FindElement = function(id)
   {
+    if(ch.IsEmpty(id))
+      return null;
+
     return document.getElementById(id);
   }
 
@@ -577,7 +580,7 @@ Cheetah.DOMBuilder = function()
       }
     )
 
-    return $items.size();
+    return $items.length;
   }
   
   /*****************************************************************************/  
@@ -594,6 +597,12 @@ Cheetah.DOMBuilder = function()
   /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.EndElement = function()
   {
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.css = function(element, name, value)
+  {
+    $(element).css(name, value);
   }
 
 /*****************************************************************************/
