@@ -5,7 +5,7 @@ A Javascript MVVM Framework for fast web development.
 Render your model with templates in a simple XSLT-like syntax.
 
 ## Two-way Binding
-Bind your html elements back to your model. As the user makes changes to form elements your model is updated. Any references to those model items are automatically updated.
+Bind your html elements back to your model. As the user makes changes to form elements your model is updated. Any references to those model items in your view are automatically updated.
 
 ## Intuitive Syntax
 Create a custom ViewModel by simply overriding the default and overriding existing methods or adding new ones.
