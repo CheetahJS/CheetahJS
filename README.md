@@ -20,7 +20,7 @@ Create new transforms (i.e. custom elements/tags) or action steps.
 Fast to learn! Fast to develop! Runs fast in the browser!
 
 ##Requirements
-Cheetah is built on top of JQuery to help keep it fast and lightweight. We've tested it with v1.10.2, v.2.2.0 and v3.1.0.
+Cheetah is built on top of JQuery to help keep it fast and lightweight. We've tested it with v1.10.2, v2.2.0 and v3.1.0.
 
 ##Documentation
 Coming soon!
