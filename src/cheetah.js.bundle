@@ -17,5 +17,6 @@
     <file>/scripts/cheetah.expression.js</file>
     <file>/scripts/cheetah.animations.js</file>
     <file>/scripts/cheetah.storage.js</file>
+    <file>/scripts/cheetah.service.js</file>
   </files>
 </bundle>

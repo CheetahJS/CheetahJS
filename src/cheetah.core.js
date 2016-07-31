@@ -37,7 +37,7 @@ Cheetah.ViewModel = function(div)
 {
   this.Model     = null;
   this.ModelPath = "";
-  this.ModelVerb = "POST";
+  this.ModelVerb = "GET";
   this.Template  = "";
 
   var _impl = new _cheetah.ViewModel(this, div);
@@ -279,7 +279,7 @@ _cheetah.ViewModel = function(vm, div)
 
       this.PostProcessModel(model);
 
-      if(ch.IsValid(fnDone))
+      if(fnDone)
         fnDone(model);
 
       this.ProcessAsync();
@@ -1105,7 +1105,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
       if(ch.IsEmpty(trigger))
         trigger = (parentName == "button" || parentName == "a") ? "click" : "mouseup";
 
-      if(trigger.indexOf("visibility") == -1)
+      if(trigger.indexOf("visibility") == -1 && trigger.indexOf("visible") == -1)
       {
         $(this.NewElement).on
         (
@@ -3161,7 +3161,10 @@ _cheetah.ModelWatcher = function(vm, context)
 
     model = ch.Coalesce(model, context.Model);
 
-   var modelCompare = model;
+    if(!model)
+      return true;
+
+    var modelCompare = model;
 
     if(!ch.IsEmpty(model.$$path))
       modelCompare = ch.GetModelValue(model.$$parent, model.$$path, this.Context);
@@ -3811,7 +3814,7 @@ Cheetah.Service = function()
   {  
     if(url.indexOf("~") == -1)
     {
-      if(url.indexOf("/") == -1)
+      if(url.indexOf("/") == -1 && !ch.IsEmpty(folder))
         return(folder + "/" + url);
 
       return(url);

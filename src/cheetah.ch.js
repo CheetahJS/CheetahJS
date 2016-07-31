@@ -128,7 +128,12 @@ var ch = new function ()
         model = model.$$parent;
       }
       else
+      {
+        if(!model[part])
+          model[part] = {};
+
         model = model[part];
+      }
     }
 
     model[aParts[n]] = val;
@@ -303,6 +308,15 @@ var ch = new function ()
     }
 
     return obj;
+  }
+
+  /***************************************************************************************/
+  this.Merge = function (obj1, obj2)
+  {  
+    for(var key in obj2) 
+      obj1[key] = obj2[key];
+
+    return obj1;
   }
 
   /***************************************************************************************/
