@@ -685,12 +685,12 @@ _cheetah.Node = function(vm, parentElement, element, model)
   _cheetah.Node.prototype.EvaluateText = function(vm, text)
   {  
     if(text == null || text == undefined)
-      return("");
+      return "";
 
     if(!_cheetah.IsCheetahExpression(text))
-      return(text);
+      return $.trim(text);
 
-    return(new _cheetah.TextExpression(vm, this, text));
+    return new _cheetah.TextExpression(vm, this, text);
   }
 
   /*****************************************************************************/
@@ -2233,12 +2233,13 @@ Cheetah.Attribute = function(name, val)
 /*****************************************************************************/
 _cheetah.Action = function(vm, context, element, parent)
 {
-  this.Steps         = [];
-  this.ViewModel     = vm;
-  this.Name          = !element ? "" : ch.AttributeValue(element, "name");
-  this.NumAnimations = 0;
-  this.Trigger       = !element ? "" : ch.AttributeValue(element, "trigger");
-  this.Parent        = parent;
+  this.Steps           = [];
+  this.ViewModel       = vm;
+  this.Name            = !element ? "" : ch.AttributeValue(element, "name");
+  this.NumAnimations   = 0;
+  this.Trigger         = !element ? "" : ch.AttributeValue(element, "trigger");
+  this.Parent          = parent;
+  this.OnFail          = null;
 
   /*****************************************************************************/
   this.Run = function(evt)
@@ -2293,7 +2294,7 @@ _cheetah.Action = function(vm, context, element, parent)
 
     var inject =  {};
 
-    if(value.indexOf("$$result") == 0 || value.indexOf("//$$result") == 0)
+    if(value.indexOf("$$result") != -1)
       inject["$$result"] = evt.$$result;
 
     var expr  = context.EvaluateText(this.ViewModel, value.replaceAll("$$target.", ""));
@@ -2482,16 +2483,17 @@ _cheetah.Action = function(vm, context, element, parent)
   }
 
   /*****************************************************************************/
-  _cheetah.Action.prototype.EvalChildConditionalSetter = function(context, childNode, action, param, parent)
+  _cheetah.Action.prototype.EvalChildConditionalSetter = function(context, childNode, action, param)
   {
-    if(ch.IsEmpty(childNode.childNodes))
+    var childAction = this.CreateChild(context, childNode); 
+
+    if(childAction == null)
     {
       Cheetah.Logger.Error("No child steps for " + action + " step in action");
     }
     else
     {
-      var vm  = this.ViewModel;
-      var childAction = new _cheetah.Action(vm, context, childNode, parent);
+      var vm = this.ViewModel;
 
       this.SetActionStep(context, childNode, function(evt) 
       { 
@@ -2590,9 +2592,9 @@ _cheetah.Action = function(vm, context, element, parent)
 
       case "remove":
       {
-        this.SetActionStep(context, childNode, function(evt) 
+        this.EvalSelectSetter(self, context, childNode, false, function($q, name, val)
         {
-          $(ch.EventTarget(evt)).remove();
+          $q.remove();
         });
 
         break;
@@ -2640,6 +2642,25 @@ _cheetah.Action = function(vm, context, element, parent)
         break;
       }
 
+      case "message":
+      {
+        var txt = $.trim(childNode.innerHTML);
+        var type = ch.AttributeValue(childNode, "type");
+
+        txt = context.EvaluateText(this.ViewModel, txt);
+
+        this.SetActionStep(context, childNode, function(evt) 
+        {
+          switch(type)
+          {
+            case "error": vm.OnError(txt); break;
+            default:      vm.OnInfo(txt); break;
+          }
+        });
+
+        break;
+      }
+
       case "confirm":
       {
         var msg = ch.AttributeValue(childNode, "message");
@@ -2650,7 +2671,7 @@ _cheetah.Action = function(vm, context, element, parent)
 
       case "validate":
       {
-        var validator = new _cheetah.Validator(this.ViewModel, context, childNode);
+        var validator = new _cheetah.Validator(this.ViewModel, context, childNode, this);
 
         if(validator.IsValid)
         {
@@ -2675,10 +2696,56 @@ _cheetah.Action = function(vm, context, element, parent)
         break;
       }
 
+      case "onfail":
+      {
+        if(this.Parent)
+          this.OnFail = this.CreateChild(context, childNode);
+  
+        break;
+      }
+
+      case "delay":
+      {
+        var amt = ch.AttributeValue(childNode, "for");
+        var childAction = this.CreateChild(context, childNode);
+
+        amt = context.EvaluateText(this.ViewModel, amt);
+
+        this.SetActionStep(context, childNode, function(evt) 
+        {
+          var delay = Number(ch.Evaluate(amt));
+
+          if(!ch.IsValidNumber(delay))
+            delay = 100;
+
+          setTimeout( function()
+          {
+            childAction.Run(evt);
+          }, 
+          delay);
+        });
+
+        break;
+      }
+
       default:
         this.HandleCustomStep(context, childNode, stepName);
         break;
     }
+  }
+
+  /*****************************************************************************/
+  _cheetah.Action.prototype.CreateChild = function(context, childNode)
+  {    
+    if(!ch.IsEmpty(childNode.childNodes))
+    {
+      var childAction = new _cheetah.Action(this.ViewModel, context, childNode, this);
+
+      if(childAction.Steps.length != 0)
+        return childAction;
+    }
+    
+    return null;
   }
 
   /*****************************************************************************/
@@ -2698,13 +2765,8 @@ _cheetah.Action = function(vm, context, element, parent)
       if(step.ProcessAttributes)
         params = step.ProcessAttributes(childNode.attributes) || {};
 
-      if(step.AllowChildren && !ch.IsEmpty(childNode.childNodes))
-      {
-        childAction = new _cheetah.Action(vm, context, childNode);
-
-        if(childAction.Steps.length == 0)
-          childAction = null;
-      }
+      if(step.AllowChildren)
+        childAction = this.CreateChild(context, childNode);
 
       this.SetActionStep(context, childNode, function(evt) 
       {
@@ -2726,20 +2788,26 @@ _cheetah.Action = function(vm, context, element, parent)
           }
 
           if(childAction == null)
-          {
             return step.Run(evt, context.NewElement, avm, evalParams);
-          }
-          else
-          {
-            var target = ch.IsValid(context.ParentContext) ? context.ParentContext.NewElement : null;
 
-            evt.$$result = {};
+          var target = ch.IsValid(context.ParentContext) ? context.ParentContext.NewElement : null;
 
-            return step.Run(evt, target, avm, evalParams, function() 
-            { 
-              childAction.Run(evt); 
-            });
-          }
+          evt.$$result = {};
+
+          var fnError = null;
+
+          if(childAction.OnFail)
+            fnError = function() 
+                      { 
+                        childAction.OnFail.Run(evt); 
+                      };
+
+          return step.Run(evt, target, avm, evalParams, 
+                          function() 
+                          { 
+                            childAction.Run(evt); 
+                          },
+                          fnError);
         }
         catch(e)
         {
@@ -2753,26 +2821,27 @@ _cheetah.Action = function(vm, context, element, parent)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.ValidatorItem = function(vm, element)
+_cheetah.ValidatorItem = function(vm, context, element)
 {
   var _name         = ch.AttributeValue(element, "name");
   var _validators   = [];
   var _expr         = CreateCondition(vm, element);
+  var _context      = context;
 
   this.IsValid = !ch.IsEmpty(_name);
   this.ErrorMessage = "";
 
   /*****************************************************************************/
-  this.AddValidator = function(element, name, fn)
+  this.AddValidator = function(vm, element, name, fn)
   {  
     var value = ch.AttributeValue(element, name);
 
     if(!ch.IsEmpty(value))
-      _validators.push( new ValidatorAttribute(element, name, value, fn));
+      _validators.push( new ValidatorAttribute(vm, _context, element, name, value, fn));
   } 
 
   /*****************************************************************************/
-  function ValidatorAttribute(element, name, value, fn)
+  function ValidatorAttribute(vm, context, element, name, value, fn)
   {
     var _value = "";
     var _fn    = fn;
@@ -2785,19 +2854,20 @@ _cheetah.ValidatorItem = function(vm, element)
 
     if(index != -1)
     {
-      this.ErrorMessage = $.trim(value.substr(index+1));
-      _value = $.trim(value.substr(0, index));
+      this.ErrorMessage = context.EvaluateText(vm, value.substr(index+1));
+      _value = context.EvaluateText(vm, value.substr(0, index));
     }
 
-    _value = ch.Convert(_value);
-
     /*****************************************************************************/
-    this.Validate = function(model) 
+    this.Validate = function(vm, model) 
     {  
-      if(ch.IsEmpty(_value))
+      var injected = {$$root: vm.Model};
+      var val      = ch.Convert(ch.Evaluate(_value, model, injected));
+
+      if(ch.IsEmpty(val))
         return true;
 
-      return _fn(_value, model);
+      return _fn(val, model);
     }
   }
 
@@ -2814,10 +2884,16 @@ _cheetah.ValidatorItem = function(vm, element)
 
     _validators.ForEach( function(validator)
     {
-      if(!validator.Validate(model))
+      if(!validator.Validate(vm, model))
       {
         isValid = false;
-        msgs.push(validator.ErrorMessage);
+
+        var injected = {$$root: vm.Model};
+
+        msgs.push({
+                    "Name": _name,
+                    "Message": ch.Evaluate(validator.ErrorMessage, model, injected)
+                  });
 
         if(firstOnly)
           return false;
@@ -2837,22 +2913,22 @@ _cheetah.ValidatorItem = function(vm, element)
       Cheetah.Logger.Error("Validate action step is missing a name for Model item.");
     else
     {
-      this.AddValidator(element, "required", function(val, model)
+      this.AddValidator(vm, element, "required", function(val, model)
       {
         return !val || !ch.IsEmpty(model);
       });
 
-      this.AddValidator(element, "minlength", function(val, model)
+      this.AddValidator(vm, element, "minlength", function(val, model)
       {
         return val == 0 || (!ch.IsEmpty(model) && model.length >= val);
       });
 
-      this.AddValidator(element, "minvalue", function(val, model)
+      this.AddValidator(vm, element, "minvalue", function(val, model)
       {
         return Number(model) >= val;
       });
 
-      this.AddValidator(element, "maxvalue", function(val, model)
+      this.AddValidator(vm, element, "maxvalue", function(val, model)
       {
         return Number(model) <= val;
       });
@@ -2862,7 +2938,7 @@ _cheetah.ValidatorItem = function(vm, element)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.Validator = function(vm, context, element)
+_cheetah.Validator = function(vm, context, element, parent)
 {
   var _vm           = vm;
   var _context      = context;
@@ -2887,7 +2963,7 @@ _cheetah.Validator = function(vm, context, element)
           // Model is only thing we know how to validate
           case "model":
           {
-            var item = new _cheetah.ValidatorItem(vm, childNode);
+            var item = new _cheetah.ValidatorItem(vm, _context, childNode);
 
             if(item.IsValid)
               _items.push(item);
@@ -2896,15 +2972,15 @@ _cheetah.Validator = function(vm, context, element)
           }
 
           case "onvalidate":
-            _childAction = new _cheetah.Action(vm, context, childNode);
+            _childAction = parent.CreateChild(context, childNode);
             break;
 
           case "onfail":
-            _failAction = new _cheetah.Action(vm, context, childNode);
+            _failAction = parent.CreateChild(context, childNode);
             break;
 
           default:
-            Cheetah.Logger.Error("Unknown step for Validate action step.");
+            Cheetah.Logger.Error("Unknown child step for Validate action step.");
             break;
         }
       }
@@ -2944,17 +3020,17 @@ _cheetah.Validator = function(vm, context, element)
             if(_reportAll)
             {
               if(ch.IsEmpty(_reportTo))
-                msg = msgs.Pack("\r\n");
+                msg = msgs.Pack("\r\n", function(item) {return item.Message;} );
               else
                 msg = "<ul>" + msgs.Pack("\r\n", 
                                          function(item)
                                          {
-                                           return "<li>" + item + "</li>"
+                                           return "<li>" + item.Message + "</li>"
                                          }
                                         ) + "</ul>";
             }
             else
-              msg = "<ul><li>" + msgs[0] + "</li></ul>";
+              msg = "<ul><li>" + msgs[0].Message + "</li></ul>";
           }
   
           if(ch.IsEmpty(_reportTo))
@@ -2964,7 +3040,10 @@ _cheetah.Validator = function(vm, context, element)
         }
 
         if(_failAction)
+        {
+          evt.$$result = msgs;
           _failAction.Run(evt);
+        }
 
         return;
       }
@@ -3396,13 +3475,13 @@ _cheetah.TextExpression = function(vm, context, text)
 }
 
   /*****************************************************************************/
-  _cheetah.TextExpression.prototype.Evaluate = function(model, rootModel)
+  _cheetah.TextExpression.prototype.Evaluate = function(model, injected)
   {
     if(this.Expressions.length == 0)
       return(this.Parts.Pack(""));
 
     if(this.Expressions.length == 1 && this.Parts.length == 1)
-      return this.Parts[0].Eval(this.Context, model, rootModel);
+      return this.Parts[0].Eval(this.Context, model, injected);
 
     var self = this;
 
@@ -3413,7 +3492,7 @@ _cheetah.TextExpression = function(vm, context, text)
         if(typeof part == "string")  
           return(str + part);
 
-        return(str + ch.NormalizeText(part.Eval(self.Context, model, rootModel)))
+        return(str + ch.NormalizeText(part.Eval(self.Context, model, injected)))
       },          
       ""
     ));
@@ -3812,6 +3891,8 @@ Cheetah.Service = function()
   /***************************************************************************************/
   Cheetah.Service.prototype.NormalizeUrl = function(url, folder)
   {  
+    url = url.replaceAll("\\" , "/");
+
     if(url.indexOf("~") == -1)
     {
       if(url.indexOf("/") == -1 && !ch.IsEmpty(folder))
@@ -4082,6 +4163,14 @@ _cheetah.IsCheetahExpression = function(text)
   var index2 = text.indexOf(Cheetah.EndDelimiter, index + Cheetah.StartDelimiter.length);
 
   return index2 != -1;
+}
+
+/*****************************************************************************/
+_cheetah.RemoveExpressionDelimiters = function(text)
+{   
+  text = $.trim(text).substr(Cheetah.StartDelimiter.length);
+
+  return text.substr(0, text.indexOf(Cheetah.EndDelimiter));
 }
 
 /*****************************************************************************/

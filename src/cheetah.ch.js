@@ -233,7 +233,13 @@ var ch = new function ()
   /***************************************************************************************/
   this.Evaluate = function (expr, model, injected)
   {
-    return (typeof expr == "string" ? expr : (expr.Evaluate ? expr.Evaluate(model, injected) : expr));
+    if(typeof expr == "string")
+      return expr;
+      
+    if(expr.Evaluate)
+      return expr.Evaluate(model, injected);
+
+    return expr;
   }
 
   /***************************************************************************************/

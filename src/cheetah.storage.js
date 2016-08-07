@@ -93,7 +93,7 @@ function InitGetter(self, name, storage)
   /***************************************************************************************/
   self.ProcessAttributes = function(attrList)
   {
-    var rtn = { Required: "none", Items: [] };
+    var rtn = { Required: "none", OnlyOne: true, Items: [] };
 
     attrList.ForEach( function(attr)
     {
@@ -108,6 +108,7 @@ function InitGetter(self, name, storage)
           break;
 
         default:
+          rtn.OnlyOne = false;
           rtn.Items.push({ Name: attr.localName.toLowerCase(), Type: attr.value.toLowerCase()});
           break;
       }
@@ -125,6 +126,9 @@ function InitGetter(self, name, storage)
 
     if(required)
       nRequired = required.length;
+
+    if(!evt.$$result)
+      evt.$$result = {};
 
     params.Items.ForEach( function(itm)
     {
@@ -147,7 +151,10 @@ function InitGetter(self, name, storage)
         {
         }
 
-        evt.$$result[itm.Name] = val;
+        if(params.OnlyOne)
+          evt.$$result = val;
+        else
+          evt.$$result[itm.Name] = val;
       }
     });
 

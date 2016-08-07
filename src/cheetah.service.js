@@ -49,6 +49,7 @@ function InitService(self, name, verb)
   self.Name = name;
   self.Verb = verb;
   self.AllowChildren = true;
+  self.SpecialChildren = ["OnFail"];
 
   /***************************************************************************************/
   self.ProcessAttributes = function(attrList)
@@ -60,20 +61,21 @@ function InitService(self, name, verb)
     {
       var attr = attrList[i];
 
-      params[attr.name] = attr.value;  
+      if(attr.name != "if")
+        params[attr.name] = attr.value;  
     }
 
-    return  params;
+    return params;
   }
 
   /***************************************************************************************/
-  self.Run = function(evt, target, vm, params, fnDone)
+  self.Run = function(evt, target, vm, params, fnDone, fnError)
   {
     var svc = vm.CreateService();
     var url = svc.NormalizeUrl(params.url);
 
-    delete params.url;
     params = ch.Clone(params);
+    delete params.url;
 
     if(params.params && typeof params.params === "object")
     {
@@ -99,6 +101,13 @@ function InitService(self, name, verb)
 
       function(err)
       {
+        if(fnError)        
+        {
+          evt.$$result = err;
+          fnError();
+        }
+        else
+          Cheetah.Logger.Error(err);
       }
     );
   }
