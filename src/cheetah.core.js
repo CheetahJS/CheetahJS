@@ -656,10 +656,11 @@ _cheetah.Node = function(vm, parentElement, element, model)
   this.NewElement       = null;
   this.Model            = model;
   this.Watchers         = [];
-  this.Index            = 0;
+  this.Index            = parentElement ? parentElement.Children.length : 0;
   this.PreserveSpace    = parentElement ? parentElement.PreserveSpace : false;
   this.Watch            = true;
   this.Builder          = parentElement ? parentElement.Builder : Cheetah.Builder;
+  this.IsRenderLess     = false;
 
   // Constructor
   {
@@ -679,6 +680,12 @@ _cheetah.Node = function(vm, parentElement, element, model)
   /*****************************************************************************/
   _cheetah.Node.prototype.Clear = function(remove, finalize)
   {
+  }
+
+  /*****************************************************************************/
+  _cheetah.Node.prototype.GetLastRenderedChildElement = function()
+  {  
+    return null;
   }
 
   /*****************************************************************************/
@@ -786,7 +793,7 @@ _cheetah.TextNode = function(vm, parentElement, templateElement, model)
 /*****************************************************************************/
 _cheetah.VariableTextNode = function(vm, parentElement, templateElement, model, varElem)
 {
-  _cheetah.TextNode.call(this, vm, parentElement, templateElement, model);
+  _cheetah.TextNode.call(this, vm, parentElement, templateElement, model, true);
 
   this.VariableElement = varElem;
 }
@@ -868,7 +875,10 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
     if(name =="ch-else" || name =="ch-elseif")
     {
       if(!this.LastIf)
+      {
         _cheetah.LogError(name =="ch-else" ? 2 : 0);
+        return null;
+      }
       else if(name =="ch-elseif")
       {
         this.LastIf.AddElseIf(elem);
@@ -1039,6 +1049,75 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
   }
 
   /*****************************************************************************/
+  _cheetah.Element.prototype.GetLastRenderedChildElement = function()
+  {  
+    var nChildren = this.Children.length;
+
+    for(var i = nChildren-1; i >= 0; --i)
+    {
+      var child = this.Children[i];
+
+      if(child.IsRenderLess)
+        continue;
+
+      if(child.NewElement)
+        return child.NewElement;
+
+      var render = child.GetLastRenderedChildElement();
+
+      if(render)
+        return render;
+    }
+
+    return null;
+  }
+
+  /*****************************************************************************
+   Get element to render children of this element after.
+   *****************************************************************************/
+  _cheetah.Element.prototype.GetChildrenRenderElement = function(insert)
+  {
+    if(this.NewElement)
+    {
+      insert.insert = false;
+      return this.NewElement;
+    }
+
+    return this.GetParentsChildrenRenderElement(insert);
+  }
+
+   /*****************************************************************************/
+ _cheetah.Element.prototype.GetParentsChildrenRenderElement = function(insert)
+  {
+    if(!this.ParentContext)
+      return null; // This is bad
+
+    for(var i = this.Index-1; i >= 0; --i)
+    {
+      var sibling = this.ParentContext.Children[i];
+
+      if(sibling.IsRenderLess)
+        continue;
+
+      if(sibling.NewElement)
+      {
+        insert.insert = true;
+        return sibling.NewElement;
+      }
+
+      var render = sibling.GetLastRenderedChildElement();
+
+      if(render)
+      {
+        insert.insert = true;
+        return render;
+      }
+    }
+
+    return this.ParentContext.GetChildrenRenderElement(insert);
+  }
+
+  /*****************************************************************************/
   _cheetah.Element.prototype.ProcessChildren = function(insert, parent)
   {
     var self       = this;
@@ -1046,17 +1125,19 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
     var index      = 0;
     var childNodes = this.Template != null ? this.Template.childNodes : this.Element.childNodes;
     
-    if(insert && !parent)
-      parent = FindNextRenderedNode(this);
-    
     if(!parent)
     {
-      parent = this.NewElement ? this.NewElement : this.GetRenderParent();
-      insert = false;
+      var rtn = {insert: insert};
+
+      parent = this.GetChildrenRenderElement(rtn);
+      insert = rtn.insert;
     }
 
     childNodes.ForEach(function(item)
     {
+      if(item.nodeName == "#comment")
+        return;
+
       if(item.nodeName == "#text")
       {
         if(!self.IgnoreText && $.trim(item.nodeValue) != "")
@@ -1074,16 +1155,26 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
       }
       else
       {
+        var name = item.localName;
+
         ec = self.CreateChild(item, self.ViewModel);
 
         if(ec == null)
           return;
 
+        ec.Index = index;
         ec.ProcessElement(insert, parent);
         ec.PostProcess();
-        ec.Index = index;
 
         ++index;
+
+        if(insert)
+        {
+          var newInsertParent = ec.NewElement ? ec.NewElement : ec.GetLastRenderedChildElement();
+
+          if(newInsertParent)
+            parent = newInsertParent;
+        }
       }
     });
 
@@ -1146,63 +1237,6 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
 
     if(this.OnRender)
       this.OnRender(this);
-  }
-
-  /*****************************************************************************/
-  _cheetah.Element.prototype.GetRenderParent = function()
-  {  
-    var parent    = null;
-    var parentCxt = this.ParentContext;
-
-    while(!parent && parentCxt)
-    {
-      parent    = parentCxt.NewElement;
-      parentCxt = parentCxt.ParentContext;
-    }
-
-    if(parent == null)
-      parent = this.Builder.FindElement(this.ViewModel.Container);
-
-    return parent;
-  }
-
-  /*****************************************************************************/
-  function FindFirstRenderedNode(node)
-  {
-    // If node is DOMElement and has an actual rendered element return that
-    if(node.NewElement)
-      return node.NewElement;
-
-    // Check children
-    var returnNode = null;
-
-    node.Children.FindMatching( function(item)
-    {
-      returnNode = FindFirstRenderedNode(item); 
-
-      return returnNode != null;
-    });
-
-    return returnNode;
-  }
-
-  /*****************************************************************************/
-  function FindNextRenderedNode(ec)
-  {  
-    if(!ec.ParentContext)
-      return null;
-
-    var index    = ec.Index;
-    var nodeList = ec.ParentContext.Children;
-
-    if(index < nodeList.length-1)
-    {
-      var node = nodeList[index+1];
-
-      return FindFirstRenderedNode(node);
-    }
-
-    return FindNextRenderedNode(ec.ParentContext);
   }
 
 /*****************************************************************************/
@@ -1358,6 +1392,7 @@ _cheetah.Variable = function(vm, parentElement, element, model)
 {
   _cheetah.CheetahElement.call(this, vm, parentElement, element, model);
 
+  this.IsRenderLess = true;
   this.VariableName = ch.AttributeValue(element, "name", true);
 
   if(ch.IsEmpty(this.VariableName))
@@ -1440,6 +1475,12 @@ _cheetah.VariableBuilder = function(context, name)
   }
 
   /*****************************************************************************/  
+  _cheetah.VariableBuilder.prototype.InsertAfter = function(after, childName)
+  {
+    NonCheetahErr();
+  }
+
+  /*****************************************************************************/  
   _cheetah.VariableBuilder.prototype.MoveElement = function(element, newParent)
   {
     NonCheetahErr();
@@ -1453,6 +1494,12 @@ _cheetah.VariableBuilder = function(context, name)
 
   /*****************************************************************************/  
   _cheetah.VariableBuilder.prototype.InsertTextBefore = function(before, txt)
+  {
+    NonCheetahErr();
+  }
+
+  /*****************************************************************************/  
+  _cheetah.VariableBuilder.prototype.InsertTextAfter = function(after, txt)
   {
     NonCheetahErr();
   }
@@ -1475,48 +1522,69 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
 {
   _cheetah.CheetahElement.call(this, vm, parentElement, element, model);
 
-  this.Bind = ch.AttributeValue(this.Element, "on", true);
+  this.BindPath = ch.AttributeValue(this.Element, "on", true);
+  this.Bind     = this.BindPath;
   this.IsCheetahElement = true;
 
   if(ch.IsEmpty(this.Bind))
     throw "Missing 'on' attribute for ch-bind";
 
-  var val    = ch.GetModelValue(this.Model, this.Bind, this);
-  var isList = Array.isArray(val);
+  var shouldWatch = false;
+
+  if(Cheetah.IsExpressionText(this.Bind))
+  {
+    this.Bind = this.ViewModel.CreateExpression(this.Bind);
+    shouldWatch = true;
+  }
+  else
+  {
+    this.Bind = ch.GetModelValue(this.Model, this.Bind, this);
+
+    if(Array.isArray(this.Bind))
+      shouldWatch = true;
+  }
 
   this.Sort = ch.AttributeValue(this.Element, "sort");
 
-  if(isList && this.Watch)
+  if(shouldWatch && this.Watch)
   {
-    var sort = "";
-
     if(!ch.IsEmpty(this.Sort))
-      sort = ch.Evaluate(this.EvaluateText(this.ViewModel, this.Sort));
+      this.Sort = this.EvaluateText(this.ViewModel, this.Sort);
 
-    this.AddWatcher(this.ViewModel, new _cheetah.BindWatcher(this, val, sort));
+    this.AddWatcher(this.ViewModel, new _cheetah.BindWatcher(this));
   }
 }
 
   _cheetah.BindElement.inherits(_cheetah.CheetahElement);
 
-    /*****************************************************************************/
+  /*****************************************************************************/
+  _cheetah.BindElement.prototype.EvaluateBind = function()
+  {    
+    if(this.Bind.Eval)
+      return this.Bind.Eval(this, this.Model);
+
+    this.Bind.$$path = this.BindPath;
+
+    return this.Bind;
+  }
+
+  /*****************************************************************************/
   _cheetah.BindElement.prototype.ProcessElement = function(insert, renderParent)
   {
     // We are binding to a model object?
-    var data = ch.GetModelValue(this.Model, this.Bind, this);
+    var data = this.EvaluateBind();
 
     if(data)
     {
       if(this.Sort && data.length != undefined && data.length != 0)
       {
-        var sort = ch.Evaluate(this.EvaluateText(this.ViewModel, this.Sort));
+        var sort = ch.Evaluate(this.Sort);
 
         if(!ch.IsEmpty(sort))
           ch.Sort(data, sort);
       }
 
       data.$$parent  = this.Model;
-      data.$$path    = this.Bind;
 
       var newContext = this.CreateChild(this.Element, this.ViewModel);
 
@@ -1541,9 +1609,12 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
     if(typeof(model) != "string" && model.length != undefined)
     {
       var index  = 0;
-      var parent = null;
+      var rtn    = {insert: insert}
+      var parent = this.GetChildrenRenderElement(rtn);
       var self   = this;
       var vm     = this.ViewModel;
+
+      insert = rtn.insert;
 
       return(model.ForEach(function(i) 
               {
@@ -1560,11 +1631,16 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
                   ecNew.NewElement = self.NewElement;
                   ecNew.IsArrayElement = true;
 
-                  if(insert && !parent)
-                    parent = FindNextRenderedNode(ecNew);
-
                   ecNew.ProcessChildren(insert, parent);
                   ecNew.PostProcess();
+
+                  if(insert)
+                  {
+                    var newInsertParent = ecNew.NewElement ? ecNew.NewElement : ecNew.GetLastRenderedChildElement();
+
+                    if(newInsertParent)
+                      parent = newInsertParent;
+                  }
                 }
                 index++;
               }));
@@ -2010,15 +2086,41 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
   }
 
   /*****************************************************************************/
+  _cheetah.DOMElement.prototype.GetRenderParent = function()
+  {  
+    var parent    = null;
+    var parentCxt = this.ParentContext;
+
+    while(!parent && parentCxt)
+    {
+      parent    = parentCxt.NewElement;
+      parentCxt = parentCxt.ParentContext;
+    }
+
+    if(parent == null)
+      parent = this.Builder.FindElement(this.ViewModel.Container);
+
+    return parent;
+  }
+
+  /*****************************************************************************/
   _cheetah.DOMElement.prototype.RenderNewElement = function(insert, renderParent)
   {
     var self   = this;
     var vm     = this.ViewModel;
     var ret    = false;
-    var parent = renderParent || this.GetRenderParent();
+    var parent = renderParent;
+
+    if(!parent)
+    {
+      var parInsert = {insert: insert};
+
+      parent = this.GetParentsChildrenRenderElement(parInsert);
+      insert = parInsert.insert;
+    }
 
     // Create the new html element
-    this.NewElement = insert ? this.Builder.InsertBefore(parent, this.Transform.NewName)  
+    this.NewElement = insert ? this.Builder.InsertAfter(parent, this.Transform.NewName)  
                              : this.Builder.AppendChild(parent, this.Transform.NewName);  
 
 
@@ -3365,15 +3467,13 @@ _cheetah.ModelWatcher = function(vm, context)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.BindWatcher = function(context, list, sort)
+_cheetah.BindWatcher = function(context)
 {
   _cheetah.ModelWatcher.call(this, context.ViewModel, context);
 
-  var _vm       = context.ViewModel;
-  var _list     = list;
-  var _len      = list.length;
-  var _sort     = sort;
-  var _rendered = false;
+  var _vm        = context.ViewModel;
+  var _rendered  = false;
+  var _model     = null;
 
   this.BaseReRender = this.ReRender;
   this.BaseModelChanged = this.ModelChanged;
@@ -3385,23 +3485,25 @@ _cheetah.BindWatcher = function(context, list, sort)
 
     var newModel = {};
 
-    if(this.BaseModelChanged(_list, newModel))
+    _model = this.Context.EvaluateBind();
+
+    if(this.BaseModelChanged(_model, newModel))
       return(true);
 
     if(_rendered)
       return(false);
 
-    _list = newModel.Model;
+    _model = newModel.Model;
 
     var index = 0;
     var changed = false;
 
     // Sort the list if requested
-    if(ch.IsValid(_sort))
-      ch.Sort(_list, _sort);
+    if(ch.IsValid(this.Context.Sort))
+      ch.Sort(_model, ch.Evaluate(this.Context.Sort));
 
     // See if any new items in list, removed items or reordered items
-    _list.ForEach( function(item)
+    _model.ForEach( function(item)
     {
       if(!ch.IsValid(item.$$index) || item.$$index != index)
       {
@@ -3409,7 +3511,7 @@ _cheetah.BindWatcher = function(context, list, sort)
         item.$$index = index;
       }
 
-      item.$$parent = list;
+      item.$$parent = _model;
       ++index;
     });
 
@@ -3420,8 +3522,7 @@ _cheetah.BindWatcher = function(context, list, sort)
   this.ReRender = function(model, render)
   {
     _rendered = true;
-    _list = model;
-    _len = _list.length;
+  //  _list = model;
 
     this.BaseReRender(model, render);
   }
@@ -3430,7 +3531,7 @@ _cheetah.BindWatcher = function(context, list, sort)
   this.Eval = function(vm, force)
   {
     if(this.ModelChanged())
-      this.ReRender(_list);
+      this.ReRender(_model);
   }
 }
 
@@ -3847,12 +3948,7 @@ _cheetah.VisibilityWatcher = function(vm, context, cond)
 
 Cheetah.Service = function()
 {
-  var location     = document.location.toString();
-  var appNameIndex = location.indexOf("/", location.indexOf("://") + 3);
-  var appName      = location.substring(0, appNameIndex) + "/";
-  var folderIndex  = location.indexOf("/", location.indexOf(appName) + appName.length);
-
-  this.RootFolder  = location.substring(0, folderIndex);
+  this.RootFolder = ch.UrlRoot();
 }
 
   /***************************************************************************************/

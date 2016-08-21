@@ -49,7 +49,6 @@ function InitService(self, name, verb)
   self.Name = name;
   self.Verb = verb;
   self.AllowChildren = true;
-  self.SpecialChildren = ["OnFail"];
 
   /***************************************************************************************/
   self.ProcessAttributes = function(attrList)

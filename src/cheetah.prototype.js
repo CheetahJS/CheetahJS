@@ -60,6 +60,15 @@ Array.prototype.ShallowCopy = function()
 }
 
 /***************************************************************************************/
+Array.prototype.peek = function() 
+{
+  if(this.length == 0)
+    return null;
+
+  return this[this.length-1];
+}
+
+/***************************************************************************************/
 Array.prototype.Pack = function(sep, fn) 
 {
   if(!ch.IsValid(fn))
@@ -89,18 +98,101 @@ Array.prototype.Append = function(list)
 /***************************************************************************************/
 Array.prototype.FindMatching = function(fn) 
 {
-  return(_findMatching(this, fn));
+  return _findMatching(this, fn);
+}
+
+/***************************************************************************************/
+Array.prototype.CountWhere = function(fn)
+{
+  return _countWhere(this, fn);
+}
+
+/***************************************************************************************/
+NodeList.prototype.CountWhere = function(fn)
+{
+  return _countWhere(this, fn);
+}
+
+/***************************************************************************************/
+NodeList.prototype.Where = function(fn)
+{
+  var n   = this.length;
+  var rtn = [];
+
+  for(var i = 0; i < n; ++i)
+  {
+    var item = this[i];
+
+    if(fn(item))
+      rtn.push(item);
+  }
+
+  return rtn;
+}
+
+/***************************************************************************************/
+Array.prototype.Where = function(fn, clone)
+{
+  if(clone == undefined)
+    clone = true;
+
+  var n   = this.length;
+  var rtn = [];
+
+  for(var i = 0; i < n; ++i)
+  {
+    var item = this[i];
+
+    if(fn(item))
+    {
+      if(clone)
+        rtn.push(ch.Clone(item));
+      else
+        rtn.push(item);
+    }
+  }
+
+  rtn.$$parent = this.$$parent;
+  return(rtn);
+}
+
+/***************************************************************************************/
+Array.prototype.First = function(nItems, clone)
+{
+  if(clone == undefined)
+    clone = true;
+
+  var rtn = [];
+
+  if(!ch.IsValidNumber(nItems))
+    nItems = 1;
+
+  var n = Math.min(this.length, nItems);
+
+  for(var i = 0; i < n; ++i)
+  {
+    var item = this[i];
+
+    if(clone)
+      rtn.push(ch.Clone(item));
+    else
+      rtn.push(item);
+  }
+
+  rtn.$$parent = this.$$parent;
+  return(rtn);
 }
 
 /***************************************************************************************/
 Array.prototype.Remove = function(fn) 
 {
-  var found = _findMatching(this, fn);
+  for(var i = this.length-1; i >= 0; --i)
+  {
+    if(fn(this[i]))
+      this.splice(i, 1);
+  }
 
-  if(found)
-    return this.splice(found.$matchingIndex, 1);
-
-  return null;
+  return(this);
 }
 
 /***************************************************************************************/
@@ -118,7 +210,13 @@ NamedNodeMap.prototype.FindMatching = function(fn)
 /***************************************************************************************/
 Array.prototype.IfAny = function(fn) 
 {
-  return(this.FindMatching(fn) != null);
+  return _findMatching(this, fn) != null;
+}
+
+/***************************************************************************************/
+Array.prototype.Contains = function(fn) 
+{
+  return _findMatching(this, fn) != null;
 }
 
 /***************************************************************************************/
@@ -280,6 +378,21 @@ function _forEach(list, fn, stop)
   }
 
   return(n > 0);
+}
+
+/***************************************************************************************/
+function _countWhere(list, fn)
+{
+  var n   = list.length;
+  var rtn = 0
+
+  for(var i = 0; i < n; ++i)
+  {
+    if(fn(list[i]))
+      ++rtn;
+  }
+
+  return rtn;
 }
 
 /***************************************************************************************/

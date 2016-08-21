@@ -1,4 +1,4 @@
-﻿/*****************************************************************************/
+﻿﻿/*****************************************************************************/
 /*                                                                           */
 /*    CheetahJS - "Because it's fast!"                                       */
 /*                                                                           */
@@ -8,8 +8,7 @@
 /*                                                                           */
 /*      This software is available under the MIT license (MIT)               */
 /*                                                                           */
-/*****************************************************************************/
-
+/*****************************************************************************/ 
 ///#source 1 1 /scripts/cheetah.ch.js
 "use strict";
 
@@ -49,6 +48,32 @@ var ch = new function ()
   }
 
   /*****************************************************************************/
+  this.UrlRoot = function (url)
+  { 
+    if(!url)
+      url = document.location.toString();
+
+    var lhi = url.indexOf("://localhost/");
+
+    if(lhi != -1)
+    {
+      var sepIndex = url.indexOf("/", lhi + "://localhost/".length);
+
+      if(sepIndex == -1)
+        return url + "/";
+
+      return url.substring(0, sepIndex) + "/";
+    }
+
+    var appNameIndex = url.indexOf("/", url.indexOf("://") + 3);
+
+    if(appNameIndex == -1)
+      return url + "/";
+
+    return url.substring(0, appNameIndex) + "/";
+  }
+
+  /*****************************************************************************/
   this.GetModelValue = function (model, property, varContainer)
   {
     var aParts = property; // Assume "property" is already a list of parts first
@@ -60,7 +85,7 @@ var ch = new function ()
     var n = aParts.length;
 
     if(n == 0)
-      return;
+      return model;
 
     var firstPart = aParts[0];
 
@@ -70,7 +95,7 @@ var ch = new function ()
       if(!varContainer)
       {
         LogError("Found variable in expression but no variable container was passed.");
-        return;
+        return null;
       }
 
       var val = varContainer.GetVar(firstPart.substr(1));
@@ -78,7 +103,7 @@ var ch = new function ()
       if(!val)
       {
         LogError("Variable container does not contain variable in expression.");
-        return;
+        return null;
       }
 
       if(firstPart == "$bind" && typeof val == "string")
@@ -103,7 +128,7 @@ var ch = new function ()
         if (!model.$$parent)
         {
           LogError("$$parent is not valid");
-          return;
+          return null;
         }
 
         model = model.$$parent;
@@ -141,7 +166,12 @@ var ch = new function ()
         model = model.$$parent;
       }
       else
+      {
+        if(!model[part])
+          model[part] = {};
+
         model = model[part];
+      }
     }
 
     model[aParts[n]] = val;
@@ -241,7 +271,13 @@ var ch = new function ()
   /***************************************************************************************/
   this.Evaluate = function (expr, model, injected)
   {
-    return (typeof expr == "string" ? expr : (expr.Evaluate ? expr.Evaluate(model, injected) : expr));
+    if(typeof expr == "string")
+      return expr;
+      
+    if(expr.Evaluate)
+      return expr.Evaluate(model, injected);
+
+    return expr;
   }
 
   /***************************************************************************************/
@@ -316,6 +352,15 @@ var ch = new function ()
     }
 
     return obj;
+  }
+
+  /***************************************************************************************/
+  this.Merge = function (obj1, obj2)
+  {  
+    for(var key in obj2) 
+      obj1[key] = obj2[key];
+
+    return obj1;
   }
 
   /***************************************************************************************/
@@ -648,6 +693,15 @@ Array.prototype.ShallowCopy = function()
 }
 
 /***************************************************************************************/
+Array.prototype.peek = function() 
+{
+  if(this.length == 0)
+    return null;
+
+  return this[this.length-1];
+}
+
+/***************************************************************************************/
 Array.prototype.Pack = function(sep, fn) 
 {
   if(!ch.IsValid(fn))
@@ -677,18 +731,101 @@ Array.prototype.Append = function(list)
 /***************************************************************************************/
 Array.prototype.FindMatching = function(fn) 
 {
-  return(_findMatching(this, fn));
+  return _findMatching(this, fn);
+}
+
+/***************************************************************************************/
+Array.prototype.CountWhere = function(fn)
+{
+  return _countWhere(this, fn);
+}
+
+/***************************************************************************************/
+NodeList.prototype.CountWhere = function(fn)
+{
+  return _countWhere(this, fn);
+}
+
+/***************************************************************************************/
+NodeList.prototype.Where = function(fn)
+{
+  var n   = this.length;
+  var rtn = [];
+
+  for(var i = 0; i < n; ++i)
+  {
+    var item = this[i];
+
+    if(fn(item))
+      rtn.push(item);
+  }
+
+  return rtn;
+}
+
+/***************************************************************************************/
+Array.prototype.Where = function(fn, clone)
+{
+  if(clone == undefined)
+    clone = true;
+
+  var n   = this.length;
+  var rtn = [];
+
+  for(var i = 0; i < n; ++i)
+  {
+    var item = this[i];
+
+    if(fn(item))
+    {
+      if(clone)
+        rtn.push(ch.Clone(item));
+      else
+        rtn.push(item);
+    }
+  }
+
+  rtn.$$parent = this.$$parent;
+  return(rtn);
+}
+
+/***************************************************************************************/
+Array.prototype.First = function(nItems, clone)
+{
+  if(clone == undefined)
+    clone = true;
+
+  var rtn = [];
+
+  if(!ch.IsValidNumber(nItems))
+    nItems = 1;
+
+  var n = Math.min(this.length, nItems);
+
+  for(var i = 0; i < n; ++i)
+  {
+    var item = this[i];
+
+    if(clone)
+      rtn.push(ch.Clone(item));
+    else
+      rtn.push(item);
+  }
+
+  rtn.$$parent = this.$$parent;
+  return(rtn);
 }
 
 /***************************************************************************************/
 Array.prototype.Remove = function(fn) 
 {
-  var found = _findMatching(this, fn);
+  for(var i = this.length-1; i >= 0; --i)
+  {
+    if(fn(this[i]))
+      this.splice(i, 1);
+  }
 
-  if(found)
-    return this.splice(found.$matchingIndex, 1);
-
-  return null;
+  return(this);
 }
 
 /***************************************************************************************/
@@ -706,7 +843,13 @@ NamedNodeMap.prototype.FindMatching = function(fn)
 /***************************************************************************************/
 Array.prototype.IfAny = function(fn) 
 {
-  return(this.FindMatching(fn) != null);
+  return _findMatching(this, fn) != null;
+}
+
+/***************************************************************************************/
+Array.prototype.Contains = function(fn) 
+{
+  return _findMatching(this, fn) != null;
 }
 
 /***************************************************************************************/
@@ -871,6 +1014,21 @@ function _forEach(list, fn, stop)
 }
 
 /***************************************************************************************/
+function _countWhere(list, fn)
+{
+  var n   = list.length;
+  var rtn = 0
+
+  for(var i = 0; i < n; ++i)
+  {
+    if(fn(list[i]))
+      ++rtn;
+  }
+
+  return rtn;
+}
+
+/***************************************************************************************/
 function _findMatching(list, fn) 
 {
   var n = list.length;
@@ -957,7 +1115,7 @@ Cheetah.ViewModel = function(div)
 {
   this.Model     = null;
   this.ModelPath = "";
-  this.ModelVerb = "POST";
+  this.ModelVerb = "GET";
   this.Template  = "";
 
   var _impl = new _cheetah.ViewModel(this, div);
@@ -1199,7 +1357,7 @@ _cheetah.ViewModel = function(vm, div)
 
       this.PostProcessModel(model);
 
-      if(ch.IsValid(fnDone))
+      if(fnDone)
         fnDone(model);
 
       this.ProcessAsync();
@@ -1576,10 +1734,11 @@ _cheetah.Node = function(vm, parentElement, element, model)
   this.NewElement       = null;
   this.Model            = model;
   this.Watchers         = [];
-  this.Index            = 0;
+  this.Index            = parentElement ? parentElement.Children.length : 0;
   this.PreserveSpace    = parentElement ? parentElement.PreserveSpace : false;
   this.Watch            = true;
   this.Builder          = parentElement ? parentElement.Builder : Cheetah.Builder;
+  this.IsRenderLess     = false;
 
   // Constructor
   {
@@ -1602,15 +1761,21 @@ _cheetah.Node = function(vm, parentElement, element, model)
   }
 
   /*****************************************************************************/
+  _cheetah.Node.prototype.GetLastRenderedChildElement = function()
+  {  
+    return null;
+  }
+
+  /*****************************************************************************/
   _cheetah.Node.prototype.EvaluateText = function(vm, text)
   {  
     if(text == null || text == undefined)
-      return("");
+      return "";
 
     if(!_cheetah.IsCheetahExpression(text))
-      return(text);
+      return $.trim(text);
 
-    return(new _cheetah.TextExpression(vm, this, text));
+    return new _cheetah.TextExpression(vm, this, text);
   }
 
   /*****************************************************************************/
@@ -1706,7 +1871,7 @@ _cheetah.TextNode = function(vm, parentElement, templateElement, model)
 /*****************************************************************************/
 _cheetah.VariableTextNode = function(vm, parentElement, templateElement, model, varElem)
 {
-  _cheetah.TextNode.call(this, vm, parentElement, templateElement, model);
+  _cheetah.TextNode.call(this, vm, parentElement, templateElement, model, true);
 
   this.VariableElement = varElem;
 }
@@ -1788,7 +1953,10 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
     if(name =="ch-else" || name =="ch-elseif")
     {
       if(!this.LastIf)
+      {
         _cheetah.LogError(name =="ch-else" ? 2 : 0);
+        return null;
+      }
       else if(name =="ch-elseif")
       {
         this.LastIf.AddElseIf(elem);
@@ -1959,6 +2127,75 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
   }
 
   /*****************************************************************************/
+  _cheetah.Element.prototype.GetLastRenderedChildElement = function()
+  {  
+    var nChildren = this.Children.length;
+
+    for(var i = nChildren-1; i >= 0; --i)
+    {
+      var child = this.Children[i];
+
+      if(child.IsRenderLess)
+        continue;
+
+      if(child.NewElement)
+        return child.NewElement;
+
+      var render = child.GetLastRenderedChildElement();
+
+      if(render)
+        return render;
+    }
+
+    return null;
+  }
+
+  /*****************************************************************************
+   Get element to render children of this element after.
+   *****************************************************************************/
+  _cheetah.Element.prototype.GetChildrenRenderElement = function(insert)
+  {
+    if(this.NewElement)
+    {
+      insert.insert = false;
+      return this.NewElement;
+    }
+
+    return this.GetParentsChildrenRenderElement(insert);
+  }
+
+   /*****************************************************************************/
+ _cheetah.Element.prototype.GetParentsChildrenRenderElement = function(insert)
+  {
+    if(!this.ParentContext)
+      return null; // This is bad
+
+    for(var i = this.Index-1; i >= 0; --i)
+    {
+      var sibling = this.ParentContext.Children[i];
+
+      if(sibling.IsRenderLess)
+        continue;
+
+      if(sibling.NewElement)
+      {
+        insert.insert = true;
+        return sibling.NewElement;
+      }
+
+      var render = sibling.GetLastRenderedChildElement();
+
+      if(render)
+      {
+        insert.insert = true;
+        return render;
+      }
+    }
+
+    return this.ParentContext.GetChildrenRenderElement(insert);
+  }
+
+  /*****************************************************************************/
   _cheetah.Element.prototype.ProcessChildren = function(insert, parent)
   {
     var self       = this;
@@ -1966,17 +2203,19 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
     var index      = 0;
     var childNodes = this.Template != null ? this.Template.childNodes : this.Element.childNodes;
     
-    if(insert && !parent)
-      parent = FindNextRenderedNode(this);
-    
     if(!parent)
     {
-      parent = this.NewElement ? this.NewElement : this.GetRenderParent();
-      insert = false;
+      var rtn = {insert: insert};
+
+      parent = this.GetChildrenRenderElement(rtn);
+      insert = rtn.insert;
     }
 
     childNodes.ForEach(function(item)
     {
+      if(item.nodeName == "#comment")
+        return;
+
       if(item.nodeName == "#text")
       {
         if(!self.IgnoreText && $.trim(item.nodeValue) != "")
@@ -1994,16 +2233,26 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
       }
       else
       {
+        var name = item.localName;
+
         ec = self.CreateChild(item, self.ViewModel);
 
         if(ec == null)
           return;
 
+        ec.Index = index;
         ec.ProcessElement(insert, parent);
         ec.PostProcess();
-        ec.Index = index;
 
         ++index;
+
+        if(insert)
+        {
+          var newInsertParent = ec.NewElement ? ec.NewElement : ec.GetLastRenderedChildElement();
+
+          if(newInsertParent)
+            parent = newInsertParent;
+        }
       }
     });
 
@@ -2025,7 +2274,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
       if(ch.IsEmpty(trigger))
         trigger = (parentName == "button" || parentName == "a") ? "click" : "mouseup";
 
-      if(trigger.indexOf("visibility") == -1)
+      if(trigger.indexOf("visibility") == -1 && trigger.indexOf("visible") == -1)
       {
         $(this.NewElement).on
         (
@@ -2066,63 +2315,6 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
 
     if(this.OnRender)
       this.OnRender(this);
-  }
-
-  /*****************************************************************************/
-  _cheetah.Element.prototype.GetRenderParent = function()
-  {  
-    var parent    = null;
-    var parentCxt = this.ParentContext;
-
-    while(!parent && parentCxt)
-    {
-      parent    = parentCxt.NewElement;
-      parentCxt = parentCxt.ParentContext;
-    }
-
-    if(parent == null)
-      parent = this.Builder.FindElement(this.ViewModel.Container);
-
-    return parent;
-  }
-
-  /*****************************************************************************/
-  function FindFirstRenderedNode(node)
-  {
-    // If node is DOMElement and has an actual rendered element return that
-    if(node.NewElement)
-      return node.NewElement;
-
-    // Check children
-    var returnNode = null;
-
-    node.Children.FindMatching( function(item)
-    {
-      returnNode = FindFirstRenderedNode(item); 
-
-      return returnNode != null;
-    });
-
-    return returnNode;
-  }
-
-  /*****************************************************************************/
-  function FindNextRenderedNode(ec)
-  {  
-    if(!ec.ParentContext)
-      return null;
-
-    var index    = ec.Index;
-    var nodeList = ec.ParentContext.Children;
-
-    if(index < nodeList.length-1)
-    {
-      var node = nodeList[index+1];
-
-      return FindFirstRenderedNode(node);
-    }
-
-    return FindNextRenderedNode(ec.ParentContext);
   }
 
 /*****************************************************************************/
@@ -2278,6 +2470,7 @@ _cheetah.Variable = function(vm, parentElement, element, model)
 {
   _cheetah.CheetahElement.call(this, vm, parentElement, element, model);
 
+  this.IsRenderLess = true;
   this.VariableName = ch.AttributeValue(element, "name", true);
 
   if(ch.IsEmpty(this.VariableName))
@@ -2360,6 +2553,12 @@ _cheetah.VariableBuilder = function(context, name)
   }
 
   /*****************************************************************************/  
+  _cheetah.VariableBuilder.prototype.InsertAfter = function(after, childName)
+  {
+    NonCheetahErr();
+  }
+
+  /*****************************************************************************/  
   _cheetah.VariableBuilder.prototype.MoveElement = function(element, newParent)
   {
     NonCheetahErr();
@@ -2373,6 +2572,12 @@ _cheetah.VariableBuilder = function(context, name)
 
   /*****************************************************************************/  
   _cheetah.VariableBuilder.prototype.InsertTextBefore = function(before, txt)
+  {
+    NonCheetahErr();
+  }
+
+  /*****************************************************************************/  
+  _cheetah.VariableBuilder.prototype.InsertTextAfter = function(after, txt)
   {
     NonCheetahErr();
   }
@@ -2395,48 +2600,69 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
 {
   _cheetah.CheetahElement.call(this, vm, parentElement, element, model);
 
-  this.Bind = ch.AttributeValue(this.Element, "on", true);
+  this.BindPath = ch.AttributeValue(this.Element, "on", true);
+  this.Bind     = this.BindPath;
   this.IsCheetahElement = true;
 
   if(ch.IsEmpty(this.Bind))
     throw "Missing 'on' attribute for ch-bind";
 
-  var val    = ch.GetModelValue(this.Model, this.Bind, this);
-  var isList = Array.isArray(val);
+  var shouldWatch = false;
+
+  if(Cheetah.IsExpressionText(this.Bind))
+  {
+    this.Bind = this.ViewModel.CreateExpression(this.Bind);
+    shouldWatch = true;
+  }
+  else
+  {
+    this.Bind = ch.GetModelValue(this.Model, this.Bind, this);
+
+    if(Array.isArray(this.Bind))
+      shouldWatch = true;
+  }
 
   this.Sort = ch.AttributeValue(this.Element, "sort");
 
-  if(isList && this.Watch)
+  if(shouldWatch && this.Watch)
   {
-    var sort = "";
-
     if(!ch.IsEmpty(this.Sort))
-      sort = ch.Evaluate(this.EvaluateText(this.ViewModel, this.Sort));
+      this.Sort = this.EvaluateText(this.ViewModel, this.Sort);
 
-    this.AddWatcher(this.ViewModel, new _cheetah.BindWatcher(this, val, sort));
+    this.AddWatcher(this.ViewModel, new _cheetah.BindWatcher(this));
   }
 }
 
   _cheetah.BindElement.inherits(_cheetah.CheetahElement);
 
-    /*****************************************************************************/
+  /*****************************************************************************/
+  _cheetah.BindElement.prototype.EvaluateBind = function()
+  {    
+    if(this.Bind.Eval)
+      return this.Bind.Eval(this, this.Model);
+
+    this.Bind.$$path = this.BindPath;
+
+    return this.Bind;
+  }
+
+  /*****************************************************************************/
   _cheetah.BindElement.prototype.ProcessElement = function(insert, renderParent)
   {
     // We are binding to a model object?
-    var data = ch.GetModelValue(this.Model, this.Bind, this);
+    var data = this.EvaluateBind();
 
     if(data)
     {
       if(this.Sort && data.length != undefined && data.length != 0)
       {
-        var sort = ch.Evaluate(this.EvaluateText(this.ViewModel, this.Sort));
+        var sort = ch.Evaluate(this.Sort);
 
         if(!ch.IsEmpty(sort))
           ch.Sort(data, sort);
       }
 
       data.$$parent  = this.Model;
-      data.$$path    = this.Bind;
 
       var newContext = this.CreateChild(this.Element, this.ViewModel);
 
@@ -2461,9 +2687,12 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
     if(typeof(model) != "string" && model.length != undefined)
     {
       var index  = 0;
-      var parent = null;
+      var rtn    = {insert: insert}
+      var parent = this.GetChildrenRenderElement(rtn);
       var self   = this;
       var vm     = this.ViewModel;
+
+      insert = rtn.insert;
 
       return(model.ForEach(function(i) 
               {
@@ -2480,11 +2709,16 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
                   ecNew.NewElement = self.NewElement;
                   ecNew.IsArrayElement = true;
 
-                  if(insert && !parent)
-                    parent = FindNextRenderedNode(ecNew);
-
                   ecNew.ProcessChildren(insert, parent);
                   ecNew.PostProcess();
+
+                  if(insert)
+                  {
+                    var newInsertParent = ecNew.NewElement ? ecNew.NewElement : ecNew.GetLastRenderedChildElement();
+
+                    if(newInsertParent)
+                      parent = newInsertParent;
+                  }
                 }
                 index++;
               }));
@@ -2930,15 +3164,41 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
   }
 
   /*****************************************************************************/
+  _cheetah.DOMElement.prototype.GetRenderParent = function()
+  {  
+    var parent    = null;
+    var parentCxt = this.ParentContext;
+
+    while(!parent && parentCxt)
+    {
+      parent    = parentCxt.NewElement;
+      parentCxt = parentCxt.ParentContext;
+    }
+
+    if(parent == null)
+      parent = this.Builder.FindElement(this.ViewModel.Container);
+
+    return parent;
+  }
+
+  /*****************************************************************************/
   _cheetah.DOMElement.prototype.RenderNewElement = function(insert, renderParent)
   {
     var self   = this;
     var vm     = this.ViewModel;
     var ret    = false;
-    var parent = renderParent || this.GetRenderParent();
+    var parent = renderParent;
+
+    if(!parent)
+    {
+      var parInsert = {insert: insert};
+
+      parent = this.GetParentsChildrenRenderElement(parInsert);
+      insert = parInsert.insert;
+    }
 
     // Create the new html element
-    this.NewElement = insert ? this.Builder.InsertBefore(parent, this.Transform.NewName)  
+    this.NewElement = insert ? this.Builder.InsertAfter(parent, this.Transform.NewName)  
                              : this.Builder.AppendChild(parent, this.Transform.NewName);  
 
 
@@ -3153,12 +3413,13 @@ Cheetah.Attribute = function(name, val)
 /*****************************************************************************/
 _cheetah.Action = function(vm, context, element, parent)
 {
-  this.Steps         = [];
-  this.ViewModel     = vm;
-  this.Name          = !element ? "" : ch.AttributeValue(element, "name");
-  this.NumAnimations = 0;
-  this.Trigger       = !element ? "" : ch.AttributeValue(element, "trigger");
-  this.Parent        = parent;
+  this.Steps           = [];
+  this.ViewModel       = vm;
+  this.Name            = !element ? "" : ch.AttributeValue(element, "name");
+  this.NumAnimations   = 0;
+  this.Trigger         = !element ? "" : ch.AttributeValue(element, "trigger");
+  this.Parent          = parent;
+  this.OnFail          = null;
 
   /*****************************************************************************/
   this.Run = function(evt)
@@ -3213,7 +3474,7 @@ _cheetah.Action = function(vm, context, element, parent)
 
     var inject =  {};
 
-    if(value.indexOf("$$result") == 0 || value.indexOf("//$$result") == 0)
+    if(value.indexOf("$$result") != -1)
       inject["$$result"] = evt.$$result;
 
     var expr  = context.EvaluateText(this.ViewModel, value.replaceAll("$$target.", ""));
@@ -3402,16 +3663,17 @@ _cheetah.Action = function(vm, context, element, parent)
   }
 
   /*****************************************************************************/
-  _cheetah.Action.prototype.EvalChildConditionalSetter = function(context, childNode, action, param, parent)
+  _cheetah.Action.prototype.EvalChildConditionalSetter = function(context, childNode, action, param)
   {
-    if(ch.IsEmpty(childNode.childNodes))
+    var childAction = this.CreateChild(context, childNode); 
+
+    if(childAction == null)
     {
       Cheetah.Logger.Error("No child steps for " + action + " step in action");
     }
     else
     {
-      var vm  = this.ViewModel;
-      var childAction = new _cheetah.Action(vm, context, childNode, parent);
+      var vm = this.ViewModel;
 
       this.SetActionStep(context, childNode, function(evt) 
       { 
@@ -3510,9 +3772,9 @@ _cheetah.Action = function(vm, context, element, parent)
 
       case "remove":
       {
-        this.SetActionStep(context, childNode, function(evt) 
+        this.EvalSelectSetter(self, context, childNode, false, function($q, name, val)
         {
-          $(ch.EventTarget(evt)).remove();
+          $q.remove();
         });
 
         break;
@@ -3560,6 +3822,25 @@ _cheetah.Action = function(vm, context, element, parent)
         break;
       }
 
+      case "message":
+      {
+        var txt = $.trim(childNode.innerHTML);
+        var type = ch.AttributeValue(childNode, "type");
+
+        txt = context.EvaluateText(this.ViewModel, txt);
+
+        this.SetActionStep(context, childNode, function(evt) 
+        {
+          switch(type)
+          {
+            case "error": vm.OnError(txt); break;
+            default:      vm.OnInfo(txt); break;
+          }
+        });
+
+        break;
+      }
+
       case "confirm":
       {
         var msg = ch.AttributeValue(childNode, "message");
@@ -3570,7 +3851,7 @@ _cheetah.Action = function(vm, context, element, parent)
 
       case "validate":
       {
-        var validator = new _cheetah.Validator(this.ViewModel, context, childNode);
+        var validator = new _cheetah.Validator(this.ViewModel, context, childNode, this);
 
         if(validator.IsValid)
         {
@@ -3595,10 +3876,56 @@ _cheetah.Action = function(vm, context, element, parent)
         break;
       }
 
+      case "onfail":
+      {
+        if(this.Parent)
+          this.OnFail = this.CreateChild(context, childNode);
+  
+        break;
+      }
+
+      case "delay":
+      {
+        var amt = ch.AttributeValue(childNode, "for");
+        var childAction = this.CreateChild(context, childNode);
+
+        amt = context.EvaluateText(this.ViewModel, amt);
+
+        this.SetActionStep(context, childNode, function(evt) 
+        {
+          var delay = Number(ch.Evaluate(amt));
+
+          if(!ch.IsValidNumber(delay))
+            delay = 100;
+
+          setTimeout( function()
+          {
+            childAction.Run(evt);
+          }, 
+          delay);
+        });
+
+        break;
+      }
+
       default:
         this.HandleCustomStep(context, childNode, stepName);
         break;
     }
+  }
+
+  /*****************************************************************************/
+  _cheetah.Action.prototype.CreateChild = function(context, childNode)
+  {    
+    if(!ch.IsEmpty(childNode.childNodes))
+    {
+      var childAction = new _cheetah.Action(this.ViewModel, context, childNode, this);
+
+      if(childAction.Steps.length != 0)
+        return childAction;
+    }
+    
+    return null;
   }
 
   /*****************************************************************************/
@@ -3618,13 +3945,8 @@ _cheetah.Action = function(vm, context, element, parent)
       if(step.ProcessAttributes)
         params = step.ProcessAttributes(childNode.attributes) || {};
 
-      if(step.AllowChildren && !ch.IsEmpty(childNode.childNodes))
-      {
-        childAction = new _cheetah.Action(vm, context, childNode);
-
-        if(childAction.Steps.length == 0)
-          childAction = null;
-      }
+      if(step.AllowChildren)
+        childAction = this.CreateChild(context, childNode);
 
       this.SetActionStep(context, childNode, function(evt) 
       {
@@ -3646,20 +3968,26 @@ _cheetah.Action = function(vm, context, element, parent)
           }
 
           if(childAction == null)
-          {
             return step.Run(evt, context.NewElement, avm, evalParams);
-          }
-          else
-          {
-            var target = ch.IsValid(context.ParentContext) ? context.ParentContext.NewElement : null;
 
-            evt.$$result = {};
+          var target = ch.IsValid(context.ParentContext) ? context.ParentContext.NewElement : null;
 
-            return step.Run(evt, target, avm, evalParams, function() 
-            { 
-              childAction.Run(evt); 
-            });
-          }
+          evt.$$result = {};
+
+          var fnError = null;
+
+          if(childAction.OnFail)
+            fnError = function() 
+                      { 
+                        childAction.OnFail.Run(evt); 
+                      };
+
+          return step.Run(evt, target, avm, evalParams, 
+                          function() 
+                          { 
+                            childAction.Run(evt); 
+                          },
+                          fnError);
         }
         catch(e)
         {
@@ -3673,26 +4001,27 @@ _cheetah.Action = function(vm, context, element, parent)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.ValidatorItem = function(vm, element)
+_cheetah.ValidatorItem = function(vm, context, element)
 {
   var _name         = ch.AttributeValue(element, "name");
   var _validators   = [];
   var _expr         = CreateCondition(vm, element);
+  var _context      = context;
 
   this.IsValid = !ch.IsEmpty(_name);
   this.ErrorMessage = "";
 
   /*****************************************************************************/
-  this.AddValidator = function(element, name, fn)
+  this.AddValidator = function(vm, element, name, fn)
   {  
     var value = ch.AttributeValue(element, name);
 
     if(!ch.IsEmpty(value))
-      _validators.push( new ValidatorAttribute(element, name, value, fn));
+      _validators.push( new ValidatorAttribute(vm, _context, element, name, value, fn));
   } 
 
   /*****************************************************************************/
-  function ValidatorAttribute(element, name, value, fn)
+  function ValidatorAttribute(vm, context, element, name, value, fn)
   {
     var _value = "";
     var _fn    = fn;
@@ -3705,19 +4034,20 @@ _cheetah.ValidatorItem = function(vm, element)
 
     if(index != -1)
     {
-      this.ErrorMessage = $.trim(value.substr(index+1));
-      _value = $.trim(value.substr(0, index));
+      this.ErrorMessage = context.EvaluateText(vm, value.substr(index+1));
+      _value = context.EvaluateText(vm, value.substr(0, index));
     }
 
-    _value = ch.Convert(_value);
-
     /*****************************************************************************/
-    this.Validate = function(model) 
+    this.Validate = function(vm, model) 
     {  
-      if(ch.IsEmpty(_value))
+      var injected = {$$root: vm.Model};
+      var val      = ch.Convert(ch.Evaluate(_value, model, injected));
+
+      if(ch.IsEmpty(val))
         return true;
 
-      return _fn(_value, model);
+      return _fn(val, model);
     }
   }
 
@@ -3734,10 +4064,16 @@ _cheetah.ValidatorItem = function(vm, element)
 
     _validators.ForEach( function(validator)
     {
-      if(!validator.Validate(model))
+      if(!validator.Validate(vm, model))
       {
         isValid = false;
-        msgs.push(validator.ErrorMessage);
+
+        var injected = {$$root: vm.Model};
+
+        msgs.push({
+                    "Name": _name,
+                    "Message": ch.Evaluate(validator.ErrorMessage, model, injected)
+                  });
 
         if(firstOnly)
           return false;
@@ -3757,22 +4093,22 @@ _cheetah.ValidatorItem = function(vm, element)
       Cheetah.Logger.Error("Validate action step is missing a name for Model item.");
     else
     {
-      this.AddValidator(element, "required", function(val, model)
+      this.AddValidator(vm, element, "required", function(val, model)
       {
         return !val || !ch.IsEmpty(model);
       });
 
-      this.AddValidator(element, "minlength", function(val, model)
+      this.AddValidator(vm, element, "minlength", function(val, model)
       {
         return val == 0 || (!ch.IsEmpty(model) && model.length >= val);
       });
 
-      this.AddValidator(element, "minvalue", function(val, model)
+      this.AddValidator(vm, element, "minvalue", function(val, model)
       {
         return Number(model) >= val;
       });
 
-      this.AddValidator(element, "maxvalue", function(val, model)
+      this.AddValidator(vm, element, "maxvalue", function(val, model)
       {
         return Number(model) <= val;
       });
@@ -3782,7 +4118,7 @@ _cheetah.ValidatorItem = function(vm, element)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.Validator = function(vm, context, element)
+_cheetah.Validator = function(vm, context, element, parent)
 {
   var _vm           = vm;
   var _context      = context;
@@ -3807,7 +4143,7 @@ _cheetah.Validator = function(vm, context, element)
           // Model is only thing we know how to validate
           case "model":
           {
-            var item = new _cheetah.ValidatorItem(vm, childNode);
+            var item = new _cheetah.ValidatorItem(vm, _context, childNode);
 
             if(item.IsValid)
               _items.push(item);
@@ -3816,15 +4152,15 @@ _cheetah.Validator = function(vm, context, element)
           }
 
           case "onvalidate":
-            _childAction = new _cheetah.Action(vm, context, childNode);
+            _childAction = parent.CreateChild(context, childNode);
             break;
 
           case "onfail":
-            _failAction = new _cheetah.Action(vm, context, childNode);
+            _failAction = parent.CreateChild(context, childNode);
             break;
 
           default:
-            Cheetah.Logger.Error("Unknown step for Validate action step.");
+            Cheetah.Logger.Error("Unknown child step for Validate action step.");
             break;
         }
       }
@@ -3864,17 +4200,17 @@ _cheetah.Validator = function(vm, context, element)
             if(_reportAll)
             {
               if(ch.IsEmpty(_reportTo))
-                msg = msgs.Pack("\r\n");
+                msg = msgs.Pack("\r\n", function(item) {return item.Message;} );
               else
                 msg = "<ul>" + msgs.Pack("\r\n", 
                                          function(item)
                                          {
-                                           return "<li>" + item + "</li>"
+                                           return "<li>" + item.Message + "</li>"
                                          }
                                         ) + "</ul>";
             }
             else
-              msg = "<ul><li>" + msgs[0] + "</li></ul>";
+              msg = "<ul><li>" + msgs[0].Message + "</li></ul>";
           }
   
           if(ch.IsEmpty(_reportTo))
@@ -3884,7 +4220,10 @@ _cheetah.Validator = function(vm, context, element)
         }
 
         if(_failAction)
+        {
+          evt.$$result = msgs;
           _failAction.Run(evt);
+        }
 
         return;
       }
@@ -4081,7 +4420,10 @@ _cheetah.ModelWatcher = function(vm, context)
 
     model = ch.Coalesce(model, context.Model);
 
-   var modelCompare = model;
+    if(!model)
+      return true;
+
+    var modelCompare = model;
 
     if(!ch.IsEmpty(model.$$path))
       modelCompare = ch.GetModelValue(model.$$parent, model.$$path, this.Context);
@@ -4203,15 +4545,13 @@ _cheetah.ModelWatcher = function(vm, context)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.BindWatcher = function(context, list, sort)
+_cheetah.BindWatcher = function(context)
 {
   _cheetah.ModelWatcher.call(this, context.ViewModel, context);
 
-  var _vm       = context.ViewModel;
-  var _list     = list;
-  var _len      = list.length;
-  var _sort     = sort;
-  var _rendered = false;
+  var _vm        = context.ViewModel;
+  var _rendered  = false;
+  var _model     = null;
 
   this.BaseReRender = this.ReRender;
   this.BaseModelChanged = this.ModelChanged;
@@ -4223,23 +4563,25 @@ _cheetah.BindWatcher = function(context, list, sort)
 
     var newModel = {};
 
-    if(this.BaseModelChanged(_list, newModel))
+    _model = this.Context.EvaluateBind();
+
+    if(this.BaseModelChanged(_model, newModel))
       return(true);
 
     if(_rendered)
       return(false);
 
-    _list = newModel.Model;
+    _model = newModel.Model;
 
     var index = 0;
     var changed = false;
 
     // Sort the list if requested
-    if(ch.IsValid(_sort))
-      ch.Sort(_list, _sort);
+    if(ch.IsValid(this.Context.Sort))
+      ch.Sort(_model, ch.Evaluate(this.Context.Sort));
 
     // See if any new items in list, removed items or reordered items
-    _list.ForEach( function(item)
+    _model.ForEach( function(item)
     {
       if(!ch.IsValid(item.$$index) || item.$$index != index)
       {
@@ -4247,7 +4589,7 @@ _cheetah.BindWatcher = function(context, list, sort)
         item.$$index = index;
       }
 
-      item.$$parent = list;
+      item.$$parent = _model;
       ++index;
     });
 
@@ -4258,8 +4600,7 @@ _cheetah.BindWatcher = function(context, list, sort)
   this.ReRender = function(model, render)
   {
     _rendered = true;
-    _list = model;
-    _len = _list.length;
+  //  _list = model;
 
     this.BaseReRender(model, render);
   }
@@ -4268,7 +4609,7 @@ _cheetah.BindWatcher = function(context, list, sort)
   this.Eval = function(vm, force)
   {
     if(this.ModelChanged())
-      this.ReRender(_list);
+      this.ReRender(_model);
   }
 }
 
@@ -4313,13 +4654,13 @@ _cheetah.TextExpression = function(vm, context, text)
 }
 
   /*****************************************************************************/
-  _cheetah.TextExpression.prototype.Evaluate = function(model, rootModel)
+  _cheetah.TextExpression.prototype.Evaluate = function(model, injected)
   {
     if(this.Expressions.length == 0)
       return(this.Parts.Pack(""));
 
     if(this.Expressions.length == 1 && this.Parts.length == 1)
-      return this.Parts[0].Eval(this.Context, model, rootModel);
+      return this.Parts[0].Eval(this.Context, model, injected);
 
     var self = this;
 
@@ -4330,7 +4671,7 @@ _cheetah.TextExpression = function(vm, context, text)
         if(typeof part == "string")  
           return(str + part);
 
-        return(str + ch.NormalizeText(part.Eval(self.Context, model, rootModel)))
+        return(str + ch.NormalizeText(part.Eval(self.Context, model, injected)))
       },          
       ""
     ));
@@ -4685,12 +5026,7 @@ _cheetah.VisibilityWatcher = function(vm, context, cond)
 
 Cheetah.Service = function()
 {
-  var location     = document.location.toString();
-  var appNameIndex = location.indexOf("/", location.indexOf("://") + 3);
-  var appName      = location.substring(0, appNameIndex) + "/";
-  var folderIndex  = location.indexOf("/", location.indexOf(appName) + appName.length);
-
-  this.RootFolder  = location.substring(0, folderIndex);
+  this.RootFolder = ch.UrlRoot();
 }
 
   /***************************************************************************************/
@@ -4729,9 +5065,11 @@ Cheetah.Service = function()
   /***************************************************************************************/
   Cheetah.Service.prototype.NormalizeUrl = function(url, folder)
   {  
+    url = url.replaceAll("\\" , "/");
+
     if(url.indexOf("~") == -1)
     {
-      if(url.indexOf("/") == -1)
+      if(url.indexOf("/") == -1 && !ch.IsEmpty(folder))
         return(folder + "/" + url);
 
       return(url);
@@ -5002,6 +5340,14 @@ _cheetah.IsCheetahExpression = function(text)
 }
 
 /*****************************************************************************/
+_cheetah.RemoveExpressionDelimiters = function(text)
+{   
+  text = $.trim(text).substr(Cheetah.StartDelimiter.length);
+
+  return text.substr(0, text.indexOf(Cheetah.EndDelimiter));
+}
+
+/*****************************************************************************/
 var LoadTemplates = new function()
 { 
   var _includes = [];
@@ -5213,44 +5559,44 @@ Cheetah.StringBuilder = function(s)
   }
 }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.Clear = function(s)
-{
-  this._parts = [];
-}
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.Clear = function(s)
+  {
+    this._parts = [];
+  }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.Append = function(s)
-{
-  this._parts.push(s);
-}
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.Append = function(s)
+  {
+    this._parts.push(s);
+  }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.AppendLine = function(s)
-{
-  this.Append(s + "\r\n");
-}
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.AppendLine = function(s)
+  {
+    this.Append(s + "\r\n");
+  }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.ToString = function(sep)
-{
-  if(!ch.IsValid(sep))
-    sep = "";
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.ToString = function(sep)
+  {
+    if(!ch.IsValid(sep))
+      sep = "";
 
-  return(this._parts.join(sep));
-}
+    return(this._parts.join(sep));
+  }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.ForEach = function(fn, stop)
-{
-  return this._parts.ForEach(fn, stop);
-}
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.ForEach = function(fn, stop)
+  {
+    return this._parts.ForEach(fn, stop);
+  }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.Replace = function(i, part)
-{
-  this._parts[i] = part;
-}
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.Replace = function(i, part)
+  {
+    this._parts[i] = part;
+  }
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -5631,6 +5977,12 @@ Cheetah.DOMBuilder = function()
   }
 
   /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.InsertAfter = function(afterThis, childName)
+  {
+    return _InsertAfter(afterThis, afterThis.ownerDocument.createElement(childName));
+  }
+
+  /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.MoveElement = function(element, newParent)
   {
     element.parentElement.removeChild(element);  
@@ -5649,6 +6001,9 @@ Cheetah.DOMBuilder = function()
 
     return newElement;
   }
+
+  // GetChildrenRenderElement
+  // GetRenderParent
 
   /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.RenderText = function(element, insert, renderParent, txt)
@@ -5674,6 +6029,25 @@ Cheetah.DOMBuilder = function()
     before.parentNode.insertBefore(newElement, before);   
 
     return newElement;
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.InsertTextAfter = function(afterThis, txt)
+  {
+    return _InsertAfter(afterThis, afterThis.ownerDocument.createTextNode(txt));
+  }
+
+  /*****************************************************************************/  
+  function _InsertAfter(afterThis, newNode)
+  {
+    var before = afterThis.nextSibling;
+
+    if(before)
+      before.parentNode.insertBefore(newNode, before);   
+    else
+      afterThis.parentNode.appendChild(newNode);
+
+    return newNode;
   }
 
   /*****************************************************************************/  
@@ -5932,8 +6306,14 @@ Cheetah.DOMStringBuilder = function()
 /***************************************************************************************/
 
   var _cheetah = {
-                    Operators: ["[", "]", "*", "/", "+", "-", "%", "<", "<=", ">", ">=", "==", "!=", "!=", "!", "||", "?", ":", "(", ")", "~", "^", ">>", "<<", ","]
+                    Operators: ["[", "]", "*", "/", "+", "-", "%", "<", "<=", ">", ">=", "==", "!=", "!=", "!", "||", "?", ":", "(", ")", "~", "^", ">>", "<<", ",", "=>", "and", "or", "="]
                  };
+
+  /*****************************************************************************/
+  Cheetah.IsExpressionText = function(val)
+  {
+    return _cheetah.Operators.IfAny( function(item) {return val.indexOf(item) != -1; })
+  }
 
   /*****************************************************************************/
   /*****************************************************************************/
@@ -5995,7 +6375,7 @@ Cheetah.DOMStringBuilder = function()
   /*****************************************************************************/
   _cheetah.Compiler = function()
   {
-    this._sb        = new Cheetah.StringBuilder();
+    this._sb        = [];
     this._tokenType = 0; // 0=no token, 1=token, 2=string literal, 3=number, 4=operator
     this._token     = "";
   }
@@ -6010,7 +6390,7 @@ Cheetah.DOMStringBuilder = function()
         token = this._token;
 
       if(!ch.IsEmpty(token))
-        this._sb.Append(token);
+        this._sb.push(token);
 
       this._token = "";
       this._tokenType = 0;
@@ -6093,9 +6473,22 @@ Cheetah.DOMStringBuilder = function()
 
       this.PushToken();
 
-      expression = ResolveTokens(this._sb, modelTokens, varTokens, injected).ToString("");
+      var tokens = ResolveTokens([], this._sb, modelTokens, varTokens, injected);
+      var result = PackTokens(tokens);
+      
+      return("return " + result + ";");
 
-      return("return " + expression + ";");
+      /*****************************************************************************/
+      function PackTokens(tokens)
+      {
+        return tokens.Pack("", function(part) 
+        {
+          if(part.type.indexOf("function") == 0)
+            return part.token + "(" + PackTokens(part.tokens) + ")";
+
+          return part.token; 
+        });
+      }
 
       /*****************************************************************************/
       function IsNumberChar(ch)
@@ -6107,92 +6500,219 @@ Cheetah.DOMStringBuilder = function()
       }
 
       /*****************************************************************************/
-      function ResolveTokens(sb, arr, vars, injected)
-      {
-        var i = -1;
+      function MakeToken(token, type)
+      {      
+        return {token: token, type: type ? type : "sliteral"};
+      }
 
-        sb.ForEach( function(token)
+      /*****************************************************************************/
+      function ResolveTokens(output, sb, arr, vars, injected)
+      {
+        var nTokens = sb.length;
+        var tokenStack = [];
+
+        for(var i = 0; i < nTokens; ++i)
         {
-          ++i;
+          var token = sb[i];
 
           if(token.indexOf("'") == 0 || token.indexOf("\"") == 0)
-            return;
+          {
+            output.push(MakeToken(token));
+            continue;
+          }
 
           if(token == "NaN" || token == "undefined" || token == "null" || token == "true" || token == "false")
-            return;
+          {
+            output.push(MakeToken(token, "literal"));
+            continue;
+          }
 
           if(!isNaN(parseFloat(token)))
-            return;
+          {
+            output.push(MakeToken(token, "number"));
+            continue;
+          }
+
+          if(token == "(")
+          {
+            var previousToken = output.peek();
+            
+            if(previousToken && previousToken.type == "prop")
+            {
+              previousToken.type = "function";
+              previousToken.parentOutput = output;
+              previousToken.parent = tokenStack.peek();
+              tokenStack.push(previousToken);
+
+              output = [];
+              continue;
+            }
+
+            previousToken = MakeToken("", "function_e");
+
+            previousToken.parentOutput = output;
+
+            if(tokenStack.peek() && tokenStack.peek().isLambda)
+              previousToken.isLambda = true;
+
+            previousToken.parent = tokenStack.peek();
+            tokenStack.push(previousToken);
+
+            output.push(previousToken);
+
+            output = [];
+            continue;
+          }
+
+          if(token == ")" && tokenStack.length != 0)
+          {
+            if(tokenStack.peek().type.indexOf("function") == 0)
+            {
+              var fnToken = tokenStack.pop();
+
+              if(fnToken.isLambda && fnToken.type == "function")
+                output.push(MakeToken("; }"));
+
+              fnToken.tokens = output;
+              output = fnToken.parentOutput;
+              continue;
+            }
+          }
+
+          if(token == "=>")
+          {
+            var topStack = tokenStack.peek();
+
+            topStack.isLambda = true;
+
+            if(output[0].type == "function_e")
+            {
+              var ptoken = output[0];
+
+              ptoken.token = "function";
+              ptoken.isLambda = true;
+              output.push(MakeToken(" { return "));
+
+              var n = ptoken.tokens.length;
+              var params = {};
+
+              for(var j = 0; j < n; ++j)
+              {
+                var tokenp = ptoken.tokens[j];
+                var param  = tokenp.token.replace("__model.", "")
+
+                tokenp.token = param;
+
+                if(param != ",")
+                  params[param] = param;
+              }
+
+              //ptoken.params = params;
+              topStack.parentOutput[0].params = params;
+            }
+            else
+            {
+              var param = output[0].token.replace("__model.", "");
+
+              output[0] = MakeToken("function(" + param + ") { return ");
+
+              if(!topStack.parentOutput[0].params)
+                topStack.parentOutput[0].params = {};
+
+              topStack.parentOutput[0].params[param] = param;
+            }
+
+            continue;
+          }
 
           if(_cheetah.Operators.indexOf(token) != -1)
-            return;
+          {
+            switch(token)
+            {
+              case "=":   token = "=="; break;
+              case "and": token = "&&"; break;
+              case "or":  token = "||"; break;
+            }
+
+            output.push(MakeToken(token, "operator"));
+            continue;
+          }
+
+          var neg = token.indexOf("!") == 0;
+
+          if(neg)
+            token = token.substr(1);
 
           var part = token;
+          token = "";
 
-          if(token == "=")
-            part = " == ";
-          else if(token == "and")
-            part = " && ";
-          else if(token == "or")
-            part = " || ";
-          else
+          if(part.indexOf("this.") == 0)
+            part = part.replace("this.", "__vm.");
+          else if(part.indexOf("ch.") == 0)
           {
-            var neg = token.indexOf("!") == 0;
+            ;
+          }
+          else if(part.indexOf("$$") == 0)
+          {
+            var first = part.FirstInList(".");
 
-            if(neg)
-              token = token.substr(1);
-
-            var part = token;
-            token = "";
-
-            if(part.indexOf("this.") == 0)
-              part = part.replace("this.", "__vm.");
-            else if(part.indexOf("ch.") == 0)
+            if(injected[first])
             {
-              ;
+              token = part;
+              part = "__injected." + part;
             }
-            else if(part.indexOf("$$") == 0)
-            {
-              var first = part.FirstInList(".");
-
-              if(injected[first])
-              {
-                token = part;
-                part = "__injected." + part;
-              }
-              else
-              {
-                token = part;
-                part = "__model." + part;
-              }
-            }
-            else if(part.indexOf("$") == 0)
-            {
-              var varName = part.TrimAfterIncluding(".");
-              var remaining = part.indexOf(".") != -1 ? part.TrimBefore(".") : "";
-              vars.push(varName.substr(1));
-
-              part = "__ec.GetVar('" + varName.substr(1) + "')" + remaining;
-            }
-            else if(part.indexOf(".") != 0)
+            else if(!tokenStack.peek() || !tokenStack.peek().isLambda)
             {
               token = part;
               part = "__model." + part;
             }
+          }
+          else if(part.indexOf("$") == 0)
+          {
+            var varName = part.TrimAfterIncluding(".");
+            var remaining = part.indexOf(".") != -1 ? part.TrimBefore(".") : "";
+            vars.push(varName.substr(1));
 
-            if(token != "")
-              arr.push(token);
+            part = "__ec.GetVar('" + varName.substr(1) + "')" + remaining;
+          }
+          else if(part.indexOf(".") != 0) // && (!tokenStack.peek() || !tokenStack.peek().isLambda))
+          {
+            if(!IsLambdaParam(tokenStack.peek(), part.TrimAfterIncluding(".")))
+            {
+              token = part;
+              part = "__model." + part;
+            }
+          }
 
-            if(neg)   
-              part = "!" + part;
-          }       
+          if(token != "")
+            arr.push(token);
 
-          sb.Replace(i, part);
-        });
+          if(neg)   
+            part = "!" + part;
 
-        return(sb);
+          output.push(MakeToken(part, "prop"));
+        }
+
+        return output;
       }
 
+      /*****************************************************************************/
+      function IsLambdaParam(token, part)
+      {
+        if(!token)
+          return false;
+
+        if(token.isLambda && token.params && token.params[part])
+          return true;
+
+        if(token.parentOutput && token.parentOutput[0].params && token.parentOutput[0].params[part])
+          return true;
+
+        if(token.parent)
+            return IsLambdaParam(token.parent, part);
+
+        return false;
+      }
     }
 
 }(Cheetah, document);
@@ -6481,7 +7001,7 @@ function InitGetter(self, name, storage)
   /***************************************************************************************/
   self.ProcessAttributes = function(attrList)
   {
-    var rtn = { Required: "none", Items: [] };
+    var rtn = { Required: "none", OnlyOne: true, Items: [] };
 
     attrList.ForEach( function(attr)
     {
@@ -6496,6 +7016,7 @@ function InitGetter(self, name, storage)
           break;
 
         default:
+          rtn.OnlyOne = false;
           rtn.Items.push({ Name: attr.localName.toLowerCase(), Type: attr.value.toLowerCase()});
           break;
       }
@@ -6513,6 +7034,9 @@ function InitGetter(self, name, storage)
 
     if(required)
       nRequired = required.length;
+
+    if(!evt.$$result)
+      evt.$$result = {};
 
     params.Items.ForEach( function(itm)
     {
@@ -6535,13 +7059,136 @@ function InitGetter(self, name, storage)
         {
         }
 
-        evt.$$result[itm.Name] = val;
+        if(params.OnlyOne)
+          evt.$$result = val;
+        else
+          evt.$$result[itm.Name] = val;
       }
     });
 
 
     if(fnDone && nRetrieved >= nRequired)
       fnDone();
+  }
+
+  Cheetah.RegisterActionStep(self);
+}
+
+}(Cheetah, document);
+
+
+///#source 1 1 /scripts/cheetah.service.js
+/*****************************************************************************/
+/*                                                                           */
+/*    CheetahJS - "Because it's fast!"                                       */
+/*                                                                           */
+/*       An MVVM Javascript Library for fast web development                 */
+/*                                                                           */
+/*   Copyright (c) 2015-2016 - Jim Lightfoot                                 */
+/*                                                                           */
+/*      This software is available under the MIT license (MIT)               */
+/*                                                                           */
+/*****************************************************************************/
+
+! function(Cheetah, document) {
+
+"use strict";
+
+/***************************************************************************************/
+/***************************************************************************************/
+var ServiceGet = new function()
+{
+  InitService(this, "serviceget", "GET");
+}
+
+/***************************************************************************************/
+/***************************************************************************************/
+var ServicePost = new function()
+{
+  InitService(this, "servicepost", "POST");
+}
+
+/***************************************************************************************/
+/***************************************************************************************/
+var ServicePut = new function()
+{
+  InitService(this, "serviceput", "PUT");
+}
+
+/***************************************************************************************/
+/***************************************************************************************/
+var ServiceDelete = new function()
+{
+  InitService(this, "servicedelete", "DELETE");
+}
+
+/***************************************************************************************/
+/***************************************************************************************/
+function InitService(self, name, verb)
+{
+  self.Name = name;
+  self.Verb = verb;
+  self.AllowChildren = true;
+
+  /***************************************************************************************/
+  self.ProcessAttributes = function(attrList)
+  {
+    var params = {};
+    var nAttr = attrList.length;
+
+    for(var i = 0; i < nAttr; ++i)
+    {
+      var attr = attrList[i];
+
+      if(attr.name != "if")
+        params[attr.name] = attr.value;  
+    }
+
+    return params;
+  }
+
+  /***************************************************************************************/
+  self.Run = function(evt, target, vm, params, fnDone, fnError)
+  {
+    var svc = vm.CreateService();
+    var url = svc.NormalizeUrl(params.url);
+
+    params = ch.Clone(params);
+    delete params.url;
+
+    if(params.params && typeof params.params === "object")
+    {
+      var params2 = ch.Clone(params.params);
+
+      delete params.params;
+      params = ch.Merge(params2, params);
+    }
+
+    svc.Query
+    (
+      url, 
+      self.Verb, 
+      params, 
+
+      function(data)
+      {
+        evt.$$result = data;
+
+        if(fnDone)
+          fnDone();
+      },
+
+      function(err)
+      {
+        if(fnError)        
+        {
+          evt.$$result = err;
+          fnError();
+        }
+        else
+          Cheetah.Logger.Error(err);
+      }
+    );
   }
 
   Cheetah.RegisterActionStep(self);

@@ -36,6 +36,32 @@ var ch = new function ()
   }
 
   /*****************************************************************************/
+  this.UrlRoot = function (url)
+  { 
+    if(!url)
+      url = document.location.toString();
+
+    var lhi = url.indexOf("://localhost/");
+
+    if(lhi != -1)
+    {
+      var sepIndex = url.indexOf("/", lhi + "://localhost/".length);
+
+      if(sepIndex == -1)
+        return url + "/";
+
+      return url.substring(0, sepIndex) + "/";
+    }
+
+    var appNameIndex = url.indexOf("/", url.indexOf("://") + 3);
+
+    if(appNameIndex == -1)
+      return url + "/";
+
+    return url.substring(0, appNameIndex) + "/";
+  }
+
+  /*****************************************************************************/
   this.GetModelValue = function (model, property, varContainer)
   {
     var aParts = property; // Assume "property" is already a list of parts first
@@ -47,7 +73,7 @@ var ch = new function ()
     var n = aParts.length;
 
     if(n == 0)
-      return;
+      return model;
 
     var firstPart = aParts[0];
 
@@ -57,7 +83,7 @@ var ch = new function ()
       if(!varContainer)
       {
         LogError("Found variable in expression but no variable container was passed.");
-        return;
+        return null;
       }
 
       var val = varContainer.GetVar(firstPart.substr(1));
@@ -65,7 +91,7 @@ var ch = new function ()
       if(!val)
       {
         LogError("Variable container does not contain variable in expression.");
-        return;
+        return null;
       }
 
       if(firstPart == "$bind" && typeof val == "string")
@@ -90,7 +116,7 @@ var ch = new function ()
         if (!model.$$parent)
         {
           LogError("$$parent is not valid");
-          return;
+          return null;
         }
 
         model = model.$$parent;

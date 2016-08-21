@@ -17,44 +17,44 @@ Cheetah.StringBuilder = function(s)
   }
 }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.Clear = function(s)
-{
-  this._parts = [];
-}
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.Clear = function(s)
+  {
+    this._parts = [];
+  }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.Append = function(s)
-{
-  this._parts.push(s);
-}
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.Append = function(s)
+  {
+    this._parts.push(s);
+  }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.AppendLine = function(s)
-{
-  this.Append(s + "\r\n");
-}
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.AppendLine = function(s)
+  {
+    this.Append(s + "\r\n");
+  }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.ToString = function(sep)
-{
-  if(!ch.IsValid(sep))
-    sep = "";
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.ToString = function(sep)
+  {
+    if(!ch.IsValid(sep))
+      sep = "";
 
-  return(this._parts.join(sep));
-}
+    return(this._parts.join(sep));
+  }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.ForEach = function(fn, stop)
-{
-  return this._parts.ForEach(fn, stop);
-}
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.ForEach = function(fn, stop)
+  {
+    return this._parts.ForEach(fn, stop);
+  }
 
-/*****************************************************************************/
-Cheetah.StringBuilder.prototype.Replace = function(i, part)
-{
-  this._parts[i] = part;
-}
+  /*****************************************************************************/
+  Cheetah.StringBuilder.prototype.Replace = function(i, part)
+  {
+    this._parts[i] = part;
+  }
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -435,6 +435,12 @@ Cheetah.DOMBuilder = function()
   }
 
   /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.InsertAfter = function(afterThis, childName)
+  {
+    return _InsertAfter(afterThis, afterThis.ownerDocument.createElement(childName));
+  }
+
+  /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.MoveElement = function(element, newParent)
   {
     element.parentElement.removeChild(element);  
@@ -453,6 +459,9 @@ Cheetah.DOMBuilder = function()
 
     return newElement;
   }
+
+  // GetChildrenRenderElement
+  // GetRenderParent
 
   /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.RenderText = function(element, insert, renderParent, txt)
@@ -478,6 +487,25 @@ Cheetah.DOMBuilder = function()
     before.parentNode.insertBefore(newElement, before);   
 
     return newElement;
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.InsertTextAfter = function(afterThis, txt)
+  {
+    return _InsertAfter(afterThis, afterThis.ownerDocument.createTextNode(txt));
+  }
+
+  /*****************************************************************************/  
+  function _InsertAfter(afterThis, newNode)
+  {
+    var before = afterThis.nextSibling;
+
+    if(before)
+      before.parentNode.insertBefore(newNode, before);   
+    else
+      afterThis.parentNode.appendChild(newNode);
+
+    return newNode;
   }
 
   /*****************************************************************************/  
