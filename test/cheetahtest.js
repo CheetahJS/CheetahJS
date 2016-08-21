@@ -21,6 +21,16 @@ function TestViewModel(div)
   {
   }
 
+  this.Cars = new function()
+  {
+    this.BestModel = "Aston Martin";
+
+    this.GetBestModel = function()
+    {
+      return "Audi";
+    }
+  }
+
   //***************************************************************************************
   this.MakeSomebodyElse = function()
   {    
@@ -185,10 +195,12 @@ var CheetahTests = new function()
 
     this.Test(1, model, function(test)
     {
-      test.Assert($("#test1 input").size() == 3);
-      test.Assert($("#test1 input:first-of-type").val() == "red");
-      test.Assert($("#test1 input:nth-of-type(2)").val() == "green");
-      test.Assert($("#test1 input:nth-of-type(3)").val() == "blue");
+      var $input = $("#test1 > input");
+
+      test.Assert($input.length == 3);
+      test.Assert($("#test1 > input:first-of-type").val() == "red");
+      test.Assert($("#test1 > input:nth-of-type(2)").val() == "green");
+      test.Assert($("#test1 > input:nth-of-type(3)").val() == "blue");
     });
   }
   
@@ -201,7 +213,7 @@ var CheetahTests = new function()
 
     this.Test(2, model, function(test)
     {
-      test.Assert($("#test2 input").val() == "Fred");
+      test.Assert($("#test2 > input").val() == "Fred");
     });
   }
 
@@ -215,7 +227,7 @@ var CheetahTests = new function()
 
     this.Test(3, model, function(test)
     {
-      test.Assert($("#test3 input").val() == "John");
+      test.Assert($("#test3 > input").val() == "John");
     });
   }
 
@@ -225,7 +237,7 @@ var CheetahTests = new function()
     
     this.Test(4, { Name: "George" }, function(test)
     {
-      test.Assert($("#test4 input").val() == "Fred or George");
+      test.Assert($("#test4 > input").val() == "Fred or George");
     });
   }
 
@@ -235,7 +247,7 @@ var CheetahTests = new function()
     
     this.Test(5, { Name: "Bob" }, function(test)
     {
-      test.Assert($("#test5 input").val() == "John");
+      test.Assert($("#test5 > input").val() == "John");
     });
   }
 
@@ -254,8 +266,8 @@ var CheetahTests = new function()
       }
     }, function(test)
     {
-      test.Assert($("#test6_1").val() == "Fred");
-      test.Assert($("#test6_2").val() == "John");
+      test.Assert($("#test6 > input:first-of-type").val() == "Fred");
+      test.Assert($("#test6 > input:nth-of-type(2)").val() == "John");
     });
   }
 
@@ -277,9 +289,9 @@ var CheetahTests = new function()
       $("#btnMakeGreen7").click();
 
       test.Assert($("#test7").hasClass("green"));
-      test.Assert($("#test7 div").css("height") == "42px");
-      test.Assert($("#test7 button").data("fred") == "bob");
-      test.Assert($("#test7 div").css("display") == "none");
+      test.Assert($("#test7 > div").css("height") == "42px");
+      test.Assert($("#test7 > button").data("fred") == "bob");
+      test.Assert($("#test7 > div").css("display") == "none");
     });
   }
 
@@ -295,18 +307,18 @@ var CheetahTests = new function()
 
     this.Test(8, model, function(test)
     {
-      test.Assert($("#Test8Text2").html() == "This guy Fred is 37 years old and lives in San Diego.");
+      test.AssertContent("#Test8Text2", "This guy Fred is 37 years old and lives in San Diego.");
 
-      $("#btnDo8").click();
+      //$("#btnDo8").click();
 
-      test.Assert(model.Name == "John");
-      test.Assert($("#Test8Text").html() == "John");
-      test.Assert($("#Test8Text2").html() == "This guy John is 37 years old and lives in San Diego.");
+     // test.Assert(model.Name == "John");
+    //  test.Assert($("#Test8Text").html() == "John");
+    //  test.Assert($("#Test8Text2").html() == "This guy John is 37 years old and lives in San Diego.");
 
-      $("#btnDo82").click();
+    //  $("#btnDo82").click();
 
-      test.Assert(model.Name == "Kyle" && model.Age == 28 && model.City == "Seattle");
-      test.Assert($("#Test8Text2").html() == "This guy Kyle is 28 years old and lives in Seattle.");
+     // test.Assert(model.Name == "Kyle" && model.Age == 28 && model.City == "Seattle");
+     // test.Assert($("#Test8Text2").html() == "This guy Kyle is 28 years old and lives in Seattle.");
 
     });
   }
@@ -351,6 +363,7 @@ var CheetahTests = new function()
       test.Assert($("#chkDetail").attr("checked") != "checked");
       test.Assert($("#chkAdmin").attr("checked") == "checked");
       test.Assert($("#chkEdit").attr("checked") != "checked");
+      test.Assert($("#test10_inner").hasClass("franklin"));
 
       $("#btn10_2").click();
       test.Assert($("#btn10_3").attr("disabled") == "disabled");
@@ -358,6 +371,7 @@ var CheetahTests = new function()
       test.Assert($("#chkDetail").attr("checked") == "checked");
       test.Assert($("#chkAdmin").attr("checked") != "checked");
       test.Assert($("#chkEdit").attr("checked") != "checked");
+      test.Assert($("#test10_inner").hasClass("franklin"));
 
       $("#btn10_1").click();
       test.Assert($("#btn10_3").attr("disabled") != "disabled");
@@ -365,6 +379,7 @@ var CheetahTests = new function()
       test.Assert($("#chkDetail").attr("checked") != "checked");
       test.Assert($("#chkAdmin").attr("checked") != "checked");
       test.Assert($("#chkEdit").attr("checked") == "checked");
+      test.Assert($("#test10_inner").hasClass("franklin"));
     });
   }
 
@@ -491,7 +506,8 @@ var CheetahTests = new function()
       Speed: "Fast",
       Attributes:
       {
-        Color: "blue"
+        Color: "blue",
+        InteriorColor: "green"
       },
       Price: "Expensive"
     };
@@ -502,6 +518,14 @@ var CheetahTests = new function()
       var b = $("#test15_inner").css("background-color");
 
       test.Assert(b == "rgb(0, 0, 255)");
+
+      var d = $("#test15_inner").css("width");
+
+      test.Assert(d == "400px");
+
+      var e = $("#test15_inner").css("color");
+
+      test.Assert(e == "rgb(255, 255, 0)");
 
       model.Attributes.Color = "green";
 
@@ -551,6 +575,11 @@ var CheetahTests = new function()
              $("#test16_Corvette h4").html() == "1965 Chevy Corvette" &&
              $("#test16_Camaro h4").html() == "1970 Chevy Camaro" &&
              $("#test16_Silverado h4").html() == "2016 Chevy Silverado");
+
+      test.Assert($("#test16_Malibu h3").html() == "1969 Chevy Malibu" &&
+             $("#test16_Corvette h3").html() == "1965 Chevy Corvette" &&
+             $("#test16_Camaro h3").html() == "1970 Chevy Camaro" &&
+             $("#test16_Silverado h3").html() == "2016 Chevy Silverado");
 
       test.Assert($("#test16_Malibu h5").html() == "Year: 1969" &&
              $("#test16_Corvette h5").html() == "Year: 1965" &&
@@ -680,29 +709,25 @@ var CheetahTests = new function()
 
     this.Test(20, model, function(test)
     {
-      test.Assert($("#test20 .car").size() == 4);
-      var html6 = $("#test20 div:nth-of-type(5) ~ button:first-of-type").html(); test.Assert(html6 == "Add New Car");
-      var html7 = $("#test20 div:nth-of-type(5) ~ button:nth-of-type(2)").html(); test.Assert(html7 == "Add And Remove Car");
+      test.AssertEqual($("#test20 .car").length, 4);
+      test.AssertContent("#test20 div:nth-of-type(5) ~ button:first-of-type", "Add New Car");
+      test.AssertContent("#test20 div:nth-of-type(5) ~ button:nth-of-type(2)", "Add And Remove Car");
 
       $("#btnTest20_1").click();
 
-      var size = $("#test20 .car").size();
-      var html = "";
+      test.AssertEqual($("#test20 .car").length, 5);
 
-      test.Assert(size == 5);
+      test.AssertContent("#test20 div:nth-of-type(2) h4", "1969 Chevy Malibu");
+      test.AssertContent("#test20 div:nth-of-type(3) h4", "1965 Chevy Corvette");
+      test.AssertContent("#test20 div:nth-of-type(4) h4", "1970 Chevy Camaro");
+      test.AssertContent("#test20 div:nth-of-type(5) h4", "2016 Chevy Silverado");
+      test.AssertContent("#test20 div:nth-of-type(6) h4", "1967 Chevy Nova");
 
-      var html1 = $("#test20 div:nth-of-type(2) h4").html(); test.Assert(html1 == "1969 Chevy Malibu");
-      var html2 = $("#test20 div:nth-of-type(3) h4").html(); test.Assert(html2 == "1965 Chevy Corvette");
-      var html3 = $("#test20 div:nth-of-type(4) h4").html(); test.Assert(html3 == "1970 Chevy Camaro");
-      var html4 = $("#test20 div:nth-of-type(5) h4").html(); test.Assert(html4 == "2016 Chevy Silverado");
-      var html5 = $("#test20 div:nth-of-type(6) h4").html(); test.Assert(html5 == "1967 Chevy Nova");
+      test.AssertContent("#test20 div:nth-of-type(6) ~ button:first-of-type", "Add New Car");
+      test.AssertContent("#test20 div:nth-of-type(6) ~ button:nth-of-type(2)", "Add And Remove Car");
 
-      var html6 = $("#test20 div:nth-of-type(6) ~ button:first-of-type").html(); test.Assert(html6 == "Add New Car");
-      var html7 = $("#test20 div:nth-of-type(6) ~ button:nth-of-type(2)").html(); test.Assert(html7 == "Add And Remove Car");
-
-      html = "";
     /*  $("#btnTest20_2").click();
-      test.Assert($("#test20 .car").size() == 5);
+      test.Assert($("#test20 .car").length == 5);
       test.Assert($("#test20 .car:nth-of-type(2) p").html() == "Index: 1");
       test.Assert($("#test20 .car:nth-of-type(3) p").html() == "Index: 2");
       test.Assert($("#test20 .car:nth-of-type(4) p").html() == "Index: 3");
@@ -868,7 +893,7 @@ var CheetahTests = new function()
   {
     this.Test(25, null, function(test)
     {    
-      test.ViewModel.ModelPath = "~/test25.json";
+      test.ViewModel.ModelPath = "~/models/test25.json";
       test.ViewModel.ModelVerb = "GET";
       test.ViewModel.LoadModel(null, function()
       {
@@ -885,7 +910,7 @@ var CheetahTests = new function()
   {
     this.Test(26, null, function(test)
     {        
-      test.ViewModel.ModelPath = "~/test25.json";
+      test.ViewModel.ModelPath = "~/models/test25.json";
       test.ViewModel.ModelVerb = "GET";
       test.ViewModel.LoadModel(null, function()
       {
@@ -912,7 +937,7 @@ var CheetahTests = new function()
   {
     this.Test(27, null, function(test)
     {        
-      test.ViewModel.ModelPath = "~/test25.json";
+      test.ViewModel.ModelPath = "~/models/test25.json";
       test.ViewModel.ModelVerb = "GET";
       test.ViewModel.LoadModel(null, function()
       {
@@ -1164,7 +1189,17 @@ var CheetahTests = new function()
   //***************************************************************************************
   this.Test36 = function()
   {    
-      var model = { Year: 1964};
+   var model = { Year: 1964,
+                 ErrorMessages:
+                 [
+                  "The name of the Make is too short!",
+                  "The year is too far in the past",
+                  "The year is in the future"
+                 ],
+                 MakeMinLength: 7,
+                 MinYear: 1898,
+                 MaxYear: 2017
+               };
 
     this.Test(36, model, function(test)
     {
@@ -1174,13 +1209,6 @@ var CheetahTests = new function()
       $("#btnTest36_1").click();
       test.AssertContent("#ValidateFailures", "<br>");
       test.AssertContent("#ValidateSuccess", "You've been submitted!");
-
-      $("#ValidateSuccess").html("");
-      $("#ValidateFailures").html("<br>");
-      model.Make = "Ford";
-      $("#btnTest36_1").click();
-      test.AssertContent("#ValidateFailures ul li:first-of-type", "The name of the Make is too short!");
-      test.AssertContent("#ValidateSuccess", "");
 
       $("#ValidateSuccess").html("");
       $("#ValidateFailures").html("<br>");
@@ -1206,7 +1234,6 @@ var CheetahTests = new function()
       test.AssertContent("#ValidateFailures", "<br>");
       test.AssertContent("#ValidateSuccess", "You've been submitted!");
 
-      
       $("#ValidateSuccess").html("");
       $("#ValidateFailures").html("<br>");
       model.Make = "Ford"
@@ -1215,6 +1242,24 @@ var CheetahTests = new function()
       test.AssertContent("#ValidateFailures ul li:first-of-type", "The name of the Make is too short!");
       test.AssertContent("#ValidateFailures ul li:nth-of-type(2)", "The year is in the future");
       test.AssertContent("#ValidateSuccess", "");
+
+      $("#ValidateSuccess").html("");
+      $("#ValidateFailures").html("<br>");
+      model.Make = "Ford"
+      model.Year = 2018;
+      $("#btnTest36_3").click();
+      test.Assert($("#ValidateFailures ul li").length == 1);
+      test.AssertContent("#ValidateFailures ul li:first-of-type", "The year is in the future");
+      test.AssertContent("#ValidateSuccess", "");
+
+      $("#ValidateSuccess").html("");
+      $("#ValidateFailures").html("<br>");
+      model.Make = "Ford"
+      model.Year = 2018;
+      $("#btnTest36_4").click();
+      test.AssertContent("#ValidateSuccess", "");
+      test.AssertContent("#ValidateFailures ul li:first-of-type", "The name of the Make is too short!");
+      test.AssertContent("#ValidateFailures ul li:nth-of-type(2)", "The year is in the future");
 
     });
   }
@@ -1675,24 +1720,24 @@ var CheetahTests = new function()
 
     this.Test(54, model, function(test)
     {
-      test.Assert($("#test54_test1 div").size() == 1);
+      test.Assert($("#test54_test1 div").length == 1);
       test.AssertContent("#test54_test1 div",  "Black Pontiac 1969");
       
-      test.Assert($("#test54_test2 div").size() == 1);
+      test.Assert($("#test54_test2 div").length == 1);
       test.AssertContent("#test54_test2 div",  "Black Pontiac 1969");
 
-      test.Assert($("#test54_test3 div").size() == 1);
+      test.Assert($("#test54_test3 div").length == 1);
       test.AssertContent("#test54_test3 div",  "Black Pontiac 1969");
       
-      test.Assert($("#test54_test4 div").size() == 1);
+      test.Assert($("#test54_test4 div").length == 1);
       test.AssertContent("#test54_test4 div",  "Black Pontiac 1969");
       
-      test.Assert($("#test54_test5 div").size() == 6);
+      test.Assert($("#test54_test5 div").length == 6);
       test.AssertContent("#test54_test5 div:first-of-type",  "Black Pontiac 1969");
       test.AssertContent("#test54_test5 div:nth-of-type(2)",  "Blue Chevy 1970");
       test.AssertContent("#test54_test5 div:nth-of-type(6)",  "Midnight Blue Aston Martin 1964");
 
-      test.Assert($("#test54_test6 div").size() == 6);
+      test.Assert($("#test54_test6 div").length == 6);
       test.AssertContent("#test54_test6 div:first-of-type",  "Black Pontiac 1969");
       test.AssertContent("#test54_test6 div:nth-of-type(2)",  "Blue Chevy 1970");
       test.AssertContent("#test54_test6 div:nth-of-type(6)",  "Midnight Blue Aston Martin 1964");
@@ -1743,7 +1788,7 @@ var CheetahTests = new function()
 
     this.Test(56, model, function(test)
     {
-      test.Assert($("#test56_test1 ul li").size() == 3);
+      test.Assert($("#test56_test1 ul li").length == 3);
       
       $("#test56_btn0").click();
       test.Assert(model.CurrentEvent && model.CurrentEvent.Name == "My Birthday");
@@ -1812,7 +1857,9 @@ var CheetahTests = new function()
   {    
     var model = {
                   CurrentFavorite:  "Chevy",
+                  CurrentSecondFavorite:  "Pontiac",
                   Favorite:  "Aston Martin",
+                  SecondFavorite:  "Audi",
 
                   Make: "Audi",
                   Year: 1973,
@@ -1824,7 +1871,8 @@ var CheetahTests = new function()
     this.Test(59, model, function(test)
     {
       $("#test59_btn1").click();
-      test.AssertContent("#test59_test1 > div", "Aston Martin");
+      test.AssertContent("#test59_test1 > div:first-of-type", "Aston Martin");
+      test.AssertContent("#test59_test1 > div:nth-of-type(2)", "Audi");
 
       $("#test59_btn2").click();
       test.AssertContent("#test59_test2 > div", "1965 Pontiac");
@@ -1834,6 +1882,338 @@ var CheetahTests = new function()
 
     });
   }
+
+ //***************************************************************************************
+  this.Test60 = function()
+  {
+    
+    var model = {
+      Name: "Fred",
+      Age: 37,
+      City: "San Diego"
+    };
+
+    this.Test(60, model, function(test)
+    {
+      test.Assert($("#Test60Text2").html() == "This guy Fred is 37 years old and lives in San Diego.");
+
+      $("#btnDo60").click();
+
+      test.Assert(model.Name == "John");
+      test.Assert($("#Test60Text").html() == "John");
+      test.Assert($("#Test60Text2").html() == "This guy John is 37 years old and lives in San Diego.");
+
+      $("#btnDo602").click();
+
+      test.Assert(model.Name == "Kyle" && model.Age == 28 && model.City == "Seattle");
+      test.Assert($("#Test60Text2").html() == "This guy Kyle is 28 years old and lives in Seattle.");
+
+    },
+    true);
+  }
+
+  //***************************************************************************************
+  this.Test61 = function()
+  {    
+    var model = {
+                  GetParams: {CustomerName: "Kyle",
+                              CarMake: "Audi",
+                              CarModel: "S5",
+                              CarYear: 2014},
+
+                  PostResult:
+                  {
+                    Data:
+                    {
+                      Members: []
+                    }
+                  },
+
+                  CurrentFavorite:  "Chevy",
+                  Favorite:  "Aston Martin",
+
+                  Make: "Audi",
+                  Year: 1973,
+
+                  Make3: "Audi",
+                  Year3: 1973,
+                };
+
+    this.Test(61, model, function(test)
+    {
+      $("#test61_btn1").click();
+
+      setTimeout( function()
+      {
+        test.Assert($("#test61_test1 li").length == 4);
+        test.AssertContent("#test61_test1 li:first-of-type", "John");
+        test.AssertContent("#test61_test1 li:nth-of-type(2)", "Fred");
+        test.AssertContent("#test61_test1 li:nth-of-type(3)", "Melinda");
+        test.AssertContent("#test61_test1 li:nth-of-type(4)", "Minh");
+      
+        test.AssertContent("#test61_test1 #result1", "Kyle");
+        test.AssertContent("#test61_test1 #result2", "Audi");
+        test.AssertContent("#test61_test1 #result3", "S5");
+        test.AssertContent("#test61_test1 #result4", "2014");
+        test.AssertContent("#test61_test1 #result5", "10101");
+      }, 
+      100);
+    });
+  }
+
+  //***************************************************************************************
+  this.Test62 = function()
+  {    
+    var model = {
+                  CurrentFavorite:  "Chevy",
+                  Favorite:  "Aston Martin",
+
+                  Make: "Audi",
+                  Year: 1973,
+
+                  Make3: "Audi",
+                  Year3: 1973,
+                };
+
+    this.Test(62, model, function(test)
+    {
+      test.AssertContent("#test62_test1 p", "Aston Martin");
+      test.AssertContent("#test62_test2 p", "Audi");
+    });
+  }
+
+  //***************************************************************************************
+  this.Test63 = function()
+  {    
+    var model = {
+                  Make3: "Audi",
+                  Year3: 1973,
+                };
+
+    this.Test(63, model, function(test)
+    {
+    });
+  }
+
+
+  //***************************************************************************************
+  this.Test64 = function()
+  {    
+    var model = {
+                  Make3: "Audi",
+                  Year3: 1973,
+                };
+
+    this.Test(64, model, function(test)
+    {
+      $("#test64_btn1").click();
+      test.AssertContent("#test64_container", "Empty");
+    });
+  }
+
+  //***************************************************************************************
+  this.Test65 = function()
+  {    
+    var model = {
+                  Errors: [],
+                  Make3: "Audi",
+                  Year3: 1973,
+                };
+
+    this.Test(65, model, function(test)
+    {
+      $("#test65_btn1").click();
+    });
+  }
+
+  //***************************************************************************************
+  this.Test66 = function()
+  {    
+    var model = {
+                  Vehicles: [
+                      {
+                        Name: "Malibu",
+                        Color: "Green",
+                        Year: 1969
+                      },
+                      {
+                        Name: "Corvette",
+                        Color: "Red",
+                        Year: 1965
+                      },
+                      {
+                        Name: "Camaro",
+                        Color: "Black",
+                        Year: 1970
+                      },
+                      {
+                        Name: "Silverado",
+                        Color: "Blue",
+                        Year: 2016
+                      }
+                    ]
+                };
+
+    this.Test(66, model, function(test)
+    {
+      test.AssertEqual($("#test66_panel1 div").length, 4);
+      test.AssertContent("#test66_panel1 div:first-of-type", "1969 Green Malibu");
+      test.AssertContent("#test66_panel1 div:nth-of-type(2)", "1965 Red Corvette");
+      test.AssertContent("#test66_panel1 div:nth-of-type(3)", "1970 Black Camaro");
+      test.AssertContent("#test66_panel1 div:nth-of-type(4)", "2016 Blue Silverado");
+
+      model.Vehicles.push({
+                        Name: "DB8",
+                        Color: "Midnight Blue",
+                        Year: 1967
+                      });
+
+      test.ViewModel.UpdateView();
+
+      test.AssertEqual($("#test66_panel1 div").length, 5);
+      test.AssertContent("#test66_panel1 div:first-of-type", "1969 Green Malibu");
+      test.AssertContent("#test66_panel1 div:nth-of-type(2)", "1965 Red Corvette");
+      test.AssertContent("#test66_panel1 div:nth-of-type(3)", "1970 Black Camaro");
+      test.AssertContent("#test66_panel1 div:nth-of-type(4)", "2016 Blue Silverado");
+      test.AssertContent("#test66_panel1 div:nth-of-type(5)", "1967 Midnight Blue DB8");
+
+      
+    });
+  }
+
+  //***************************************************************************************
+  this.Test67 = function()
+  {    
+    var model = {
+                  MaxVehicles: 3,
+                  Vehicles: [
+                      {
+                        Name: "Malibu",
+                        Color: "Green",
+                        Year: 1969
+                      },
+                      {
+                        Name: "Corvette",
+                        Color: "Red",
+                        Year: 1965
+                      },
+                      {
+                        Name: "Camaro",
+                        Color: "Black",
+                        Year: 1970
+                      },
+                      {
+                        Name: "Silverado",
+                        Color: "Blue",
+                        Year: 2016
+                      }
+                    ]
+                };
+
+    this.Test(67, model, function(test)
+    {
+      test.AssertEqual($("#test67_panel1 ul li").length, 3);
+      test.AssertContent("#test67_panel1 ul li:first-of-type", "1969 Green Malibu");
+      test.AssertContent("#test67_panel1 ul li:nth-of-type(2)", "1965 Red Corvette");
+      test.AssertContent("#test67_panel1 ul li:nth-of-type(3)", "1970 Black Camaro");
+
+      $("#test67_btn1").click();
+
+      test.AssertEqual($("#test67_panel1 ul li").length, 4);
+      test.AssertContent("#test67_panel1 ul li:first-of-type", "1969 Green Malibu");
+      test.AssertContent("#test67_panel1 ul li:nth-of-type(2)", "1965 Red Corvette");
+      test.AssertContent("#test67_panel1 ul li:nth-of-type(3)", "1970 Black Camaro");
+      test.AssertContent("#test67_panel1 ul li:nth-of-type(4)", "2016 Blue Silverado");
+
+    });
+  }
+
+  //***************************************************************************************
+  this.Test68 = function()
+  {    
+    var model = {
+                  MaxVehicles: 3,
+                  Vehicles: [
+                      {
+                        Name: "Malibu",
+                        Color: "Green",
+                        Year: 1969
+                      },
+                      {
+                        Name: "Corvette",
+                        Color: "Red",
+                        Year: 1965
+                      },
+                      {
+                        Name: "Camaro",
+                        Color: "Black",
+                        Year: 1970
+                      },
+                      {
+                        Name: "Silverado",
+                        Color: "Blue",
+                        Year: 2016
+                      }
+                    ]
+                };
+
+    this.Test(68, model, function(test)
+    {
+      test.AssertEqual($("#test68_panel1 ul li").length, 3);
+      test.AssertContent("#test68_panel1 ul li:first-of-type", "1969 Green Malibu");
+      test.AssertContent("#test68_panel1 ul li:nth-of-type(2)", "1965 Red Corvette");
+      test.AssertContent("#test68_panel1 ul li:nth-of-type(3)", "1970 Black Camaro");
+
+    });
+  }
+
+  //***************************************************************************************
+  this.Test69 = function()
+  {    
+    var model = {
+                  Caption: 'elena',
+                  MaxVehicles: 3,
+                  Vehicles: [
+                      {
+                        Name: "Malibu",
+                        Color: "Green",
+                        Year: 1969
+                      },
+                      {
+                        Name: "Corvette",
+                        Color: "Red",
+                        Year: 1965
+                      },
+                      {
+                        Name: "Camaro",
+                        Color: "Black",
+                        Year: 1970
+                      },
+                      {
+                        Name: "Silverado",
+                        Color: "Blue",
+                        Year: 2016
+                      }
+                    ]
+                };
+
+    this.Test(69, model, function(test)
+    {
+      test.AssertEqual($("#test69_panel1 > div").length, 3);
+      test.AssertContent("#test69_panel1 > div:first-of-type", "1969 Green Malibu");
+      test.AssertContent("#test69_panel1 > div:nth-of-type(2)", "1965 Red Corvette");
+      test.AssertContent("#test69_panel1 > div:nth-of-type(3)", "1970 Black Camaro");
+
+      $("#test69_btn1").click();
+
+      test.AssertEqual($("#test69_panel1 > div").length, 4);
+      test.AssertContent("#test69_panel1 > div:first-of-type", "1969 Green Malibu");
+      test.AssertContent("#test69_panel1 > div:nth-of-type(2)", "1965 Red Corvette");
+      test.AssertContent("#test69_panel1 > div:nth-of-type(3)", "1970 Black Camaro");
+      test.AssertContent("#test69_panel1 > div:nth-of-type(4)", "2016 Blue Silverado");
+    });
+  }
+
 }
 
 /***************************************************************************************/

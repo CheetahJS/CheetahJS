@@ -1,7 +1,7 @@
 ﻿
 var UnitTests = new function()
 {
-  this.Errors = [];
+  this.NumErrors = 0;
 
   /***************************************************************************************/
   this.IfAnyTest = function()
@@ -28,10 +28,50 @@ var UnitTests = new function()
       this.Fail("IFAnyTest unit test failed!");      
   }
 
+/***************************************************************************************/
+/***************************************************************************************/
+function UnitTestViewModel(div)
+{
+  Cheetah.ViewModel.call(this, div);
+
+  this.FormatDate = function(dt, fmt, fmt2)
+  {
+    if(fmt2)
+      return "fred";
+
+    return "bob";
+  }
+
+  this.GetDateFormat = function(fmt)
+  {
+    return fmt;
+  }
+
+  this.AddAmount = function(amt1, amt2)
+  {
+    return amt1 + amt2;
+  }
+
+  this.Identity = function(val)
+  {
+    return val;
+  }
+
+  this.Empty = function(val)
+  {
+    return "";
+  }
+
+  this.TestLambdaExpression = function(fn)
+  {
+    return fn("fred", "wilma", "barney", "betty");
+  }
+}
+
   /***************************************************************************************/
   this.ExpressionTest = function()
   {
-    var vm   = new Cheetah.ViewModel("");
+    var vm   = new UnitTestViewModel("");
     var name = "Cheetah.Expression";
     var num  = 0;
     var ec = {
@@ -94,33 +134,155 @@ var UnitTests = new function()
 
                   return undefined;
                 }
+
               };
 
-    AssertExpression(this, "11 + -7",                                             4);
-    AssertExpression(this, "100 / 10",                                            10);
-    AssertExpression(this, "100 * 2",                                             200);
-    AssertExpression(this, "(100 + 5) * 10",                                      1050);
-    AssertExpression(this, "SomeNumber + 1",                                      101);
-    AssertExpression(this, "SomeNumber2.Value + 10",                              110);
-    AssertExpression(this, "(SomeNumber2.Value + 5) * 10",                        1050);
-    AssertExpression(this, "$fred",                                               "bob");
-    AssertExpression(this, "Cars.Favorite",                                       "Aston Martin");
-    AssertExpression(this, "Events[0].Name",                                      "My Birthday");
-    AssertExpression(this, "Events[0].Properties.GiftIdea",                       "Aston Martin DB9");
-    AssertExpression(this, "Events[0].Properties.GiftIdeas[2]",                   "BMW Motorcycle");
-    AssertExpression(this, "Events[0].Properties.GiftIdeas[$gift]",               "BMW Motorcycle");
-    AssertExpression(this, "Events[0].Properties.GiftIdeas[$gift4[1]]",           "BMW Motorcycle");
-    AssertExpression(this, "Events[0].Properties.GiftIdeas[$gift2.preferred]",    "Aston Martin DB9");
-    AssertExpression(this, "Events[0].Properties.GiftIdeas[$gift3.preferred[1]]", "Aston Martin DB9");
-    AssertExpression(this, "Events[0].Properties.GiftIdeas[$gift3.preferred[$gift2.preferred + (17 * $gift / (14 + 3)) - (20 / 10)]]", "Aston Martin DB9");
+    var ec2 = {
+                Model:
+                {
+                  Name: "Fred",
+                  MiddleName: "Vilhelm",
+                  MaxVehicles: 3,
+                  Vehicles: [
+                      {
+                        Name: "Malibu",
+                        Make: "Chevy",
+                        Color: "Green",
+                        Year: 1969
+                      },
+                      {
+                        Name: "Corvette",
+                        Make: "Chevy",
+                        Color: "Red",
+                        Year: 1965
+                      },
+                      {
+                        Name: "Camaro",
+                        Make: "Chevy",
+                        Color: "Black",
+                        Year: 1970
+                      },
+                      {
+                        Name: "Silverado",
+                        Make: "Chevy",
+                        Color: "Blue",
+                        Year: 2016
+                      }
+                    ]
+                },
 
+                GetVar: function(name)
+                {
+                  if(name == "make")
+                    return("Chevy");
+
+                  if(name == "vehicles")
+                    return([
+                      {
+                        Name: "Malibu",
+                        Make: "Chevy",
+                        Color: "Green",
+                        Year: 1969
+                      },
+                      {
+                        Name: "Corvette",
+                        Make: "Chevy",
+                        Color: "Red",
+                        Year: 1965
+                      },
+                      {
+                        Name: "Camaro",
+                        Make: "Chevy",
+                        Color: "Black",
+                        Year: 1970
+                      },
+                      {
+                        Name: "Silverado",
+                        Make: "Chevy",
+                        Color: "Blue",
+                        Year: 2016
+                      }
+                    ]);
+
+                  if(name == "gift2")
+                    return({ preferred: 1});
+
+                  if(name == "gift3")
+                    return({ preferred: [ 0, 1, 2, 3]});
+
+                  if(name == "gift4")
+                    return([ 3, 2, 1, 0]);
+
+                  return undefined;
+                }
+              };
+
+         var $$result = {
+                         MakeMore: function(val)
+                         {
+                           return val+1;
+                         },
+
+                         MakeLess: function(val)
+                         {
+                           return val-1;
+                         }
+                      }
+
+    AssertExpression(this, ec, "'bob and jane' + ' and ' + 'ted and wendy'",            "bob and jane and ted and wendy");
+    AssertExpression(this, ec, "11 + -7",                                             4);
+    AssertExpression(this, ec, "100 / 10",                                            10);
+    AssertExpression(this, ec, "100 * 2",                                             200);
+    AssertExpression(this, ec, "(100 + 5) * 10",                                      1050);
+    AssertExpression(this, ec, "SomeNumber + 1",                                      101);
+    AssertExpression(this, ec, "SomeNumber2.Value + 10",                              110);
+    AssertExpression(this, ec, "(2) * 10",             20);
+    AssertExpression(this, ec, "(SomeNumber2.Value + 5) * 10",                        1050);
+    AssertExpression(this, ec, "(SomeNumber2.Value + 5) * ((10 + 1) - 1)",            1050);
+    
+    AssertExpression(this, ec, "$fred",                                               "bob");
+    AssertExpression(this, ec, "Cars.Favorite",                                       "Aston Martin");
+    AssertExpression(this, ec, "Events[0].Name",                                      "My Birthday");
+    AssertExpression(this, ec, "Events[0].Properties.GiftIdea",                       "Aston Martin DB9");
+    AssertExpression(this, ec, "Events[0].Properties.GiftIdeas[2]",                   "BMW Motorcycle");
+    AssertExpression(this, ec, "Events[0].Properties.GiftIdeas[$gift]",               "BMW Motorcycle");
+    AssertExpression(this, ec, "Events[0].Properties.GiftIdeas[$gift4[1]]",           "BMW Motorcycle");
+    AssertExpression(this, ec, "Events[0].Properties.GiftIdeas[$gift2.preferred]",    "Aston Martin DB9");
+    AssertExpression(this, ec, "Events[0].Properties.GiftIdeas[$gift3.preferred[1]]", "Aston Martin DB9");
+    AssertExpression(this, ec, "Events[0].Properties.GiftIdeas[$gift3.preferred[$gift2.preferred + (17 * $gift / (14 + 3)) - (20 / 10)]]", "Aston Martin DB9");
+
+    AssertExpression(this, ec, "this.FormatDate(CurrentDate, 'M d, yy')", "bob");
+    AssertExpression(this, ec, "this.FormatDate(CurrentDate, 'M d, yy', this.GetDateFormat('M d, yy'))", "fred");
+    AssertExpression(this, ec2, "$$result.MakeMore($$result.MakeLess(MaxVehicles))", 3, {$$result: $$result});
+    AssertExpression(this, ec2, "$$result.MakeMore($$result.MakeMore($$result.MakeLess(MaxVehicles)))", 4, {$$result: $$result});
+    AssertExpression(this, ec2, "Vehicles.CountWhere( ()=> true)", 4);
+    AssertExpression(this, ec2, "Vehicles.CountWhere(v => v.Year < 2000)", 3);
+    AssertExpression(this, ec2, "Vehicles.CountWhere( (v) => v.Year < 2000)", 3);
+    AssertExpression(this, ec2, "Vehicles.CountWhere(v => v.Year >= 2000)", 1);
+    AssertExpression(this, ec2, "Vehicles.CountWhere(v => v.Make == $make)", 4);
+    AssertExpression(this, ec2, "Vehicles.CountWhere(v => (v.Year < 2000))", 3);
+
+    AssertExpression(this, ec2, "Vehicles.CountWhere(v => (v.Make == $make) and v.Year < 2000)", 3);
+    AssertExpression(this, ec2, "Vehicles.CountWhere(v => ((v.Year < (((2000) - ($vehicles.CountWhere(x => x.Year < 2000))))) and ((v.Make == $make))))", 3);
+    AssertExpression(this, ec2, "Vehicles.CountWhere( (v, w, x, y) => ((v.Year < (((2000) - ($vehicles.CountWhere(x => x.Year < 2000))))) and ((v.Make == $make))))", 3);
+    AssertExpression(this, ec2, "Vehicles.CountWhere( (v, w, x, y) => ((v.Year < (((2000) - ($vehicles.CountWhere(x => x.Year < this.AddAmount(1500, 500)))))) and ((v.Make == $make))))", 3);
+    AssertExpression(this, ec2, "this.AddAmount(100, Vehicles.CountWhere(v => v.Year < 2000))", 103);
+    
+    AssertExpression(this, ec2, "Vehicles.CountWhere(v => this.AddAmount(100, v.Year) < 2000)", 0);
+    AssertExpression(this, ec2, "Name", "Fred");
+    AssertExpression(this, ec2, "Vehicles.CountWhere( (x, y, z) => this.AddAmount(MaxVehicles, x.Year) < 1970)", 1);
+    AssertExpression(this, ec2, "this.TestLambdaExpression( (v, w, x, y)=> (v + ' ' + w + ' ' + x + ' ' + y))", "fred wilma barney betty");
+    AssertExpression(this, ec2, "this.TestLambdaExpression( (v, w, x, y)=> this.Identity(Name + ' ' + MiddleName + ' ' + this.TestLambdaExpression( (a, b, c, d)=> y) + ' ' + x + ' ' + y))", "Fred Vilhelm betty barney betty");
+
+    AssertExpression(this, ec2, "this.TestLambdaExpression( (v, w, x, y)=> this.Identity(Name + ' ' + this.TestLambdaExpression( (a, b, c, d)=> y + ' ' + MiddleName) + ' ' + x + ' ' + y))", "Fred betty Vilhelm barney betty");
+    
     /***************************************************************************************/
-    function AssertExpression(self, txt, val)
+    function AssertExpression(self, ec, txt, val, injected)
     {  
       try
       {
         var expr = new Cheetah.Expression(vm, txt);
-        var val2 = expr.Eval(ec);
+        var val2 = expr.Eval(ec, null, injected);
 
         self.AssertEqual(val, val2, "Cheetah.Expression", ++num);
       }
@@ -156,10 +318,10 @@ var UnitTests = new function()
     var data = [
                 {
                   "Color": "red",
-                  "dymmy": 893
+                  "dummy": 893
                 },
                 {
-                  "dymmy": 456,
+                  "dummy": 456,
                   "Name": "joe",
                   "Color": "green"
                 },
@@ -206,6 +368,58 @@ var UnitTests = new function()
     if(ch.Format("{0} is red and {2} is blue and {1} is green", "red", "green", "blue") != "red is red and blue is blue and green is green")
       this.Fail("FormatTest (4) unit test failed!");
   }
+
+  /***************************************************************************************/
+  this.UrlTest = function()
+  {  
+     var index = 0;
+
+    this.Assert(ch.UrlRoot("http://dev.cheetahjs.org/test/api/whatever"),   "http://dev.cheetahjs.org/",    "UrlTest", ++index);
+    this.Assert(ch.UrlRoot("http://dev.cheetahjs.org"),                     "http://dev.cheetahjs.org/",    "UrlTest", ++index);
+    this.Assert(ch.UrlRoot("http://dev.cheetahjs.org/"),                    "http://dev.cheetahjs.org/",    "UrlTest", ++index);
+    this.Assert(ch.UrlRoot("http://localhost/cheetahjs/test/api/whatever"), "http://localhost/cheetahjs/",  "UrlTest", ++index);
+    this.Assert(ch.UrlRoot("http://localhost/cheetahjs/test/api/whatever"), "http://localhost/cheetahjs/",  "UrlTest", ++index);
+    this.Assert(ch.UrlRoot("http://localhost/cheetahjs/test/api/whatever"), "http://localhost/cheetahjs/",  "UrlTest", ++index);
+    this.Assert(ch.UrlRoot("http://162.138.1.55/test/api/whatever"),        "http://162.138.1.55/",         "UrlTest", ++index);
+    this.Assert(ch.UrlRoot("http://162.138.1.55/"),                         "http://162.138.1.55/",         "UrlTest", ++index);
+    this.Assert(ch.UrlRoot("http://162.138.1.55"),                          "http://162.138.1.55/",         "UrlTest", ++index);
+  }
+
+  /***************************************************************************************/
+  this.ArrayTest = function()
+  {
+    var vehicles = [
+                      {
+                        Name: "Malibu",
+                        Color: "Green",
+                        Year: 1969
+                      },
+                      {
+                        Name: "Corvette",
+                        Color: "Red",
+                        Year: 1965
+                      },
+                      {
+                        Name: "Camaro",
+                        Color: "Black",
+                        Year: 1970
+                      },
+                      {
+                        Name: "Silverado",
+                        Color: "Blue",
+                        Year: 2016
+                      }
+                    ];
+
+     var index = 0;
+
+    this.Assert(vehicles.Where( function(v)           {return v.Year < 2000; } ).length,           3,    "ArrayTest", ++index);
+    this.Assert(vehicles.Where( function(v)           {return v.Year < 2000; } ).First(2).length,  2,    "ArrayTest", ++index);
+    this.Assert(vehicles.Contains( function(v)        {return v.Name == "Silverado"; } ),          true, "ArrayTest", ++index);
+    this.Assert(vehicles.First(2).Where( function(v)  {return v.Year > 2000; } ).length,           0,    "ArrayTest", ++index);
+    this.Assert(vehicles.Remove( function(v)          {return v.Year < 2000; } ).length,           1,    "ArrayTest", ++index);
+  }
+
 
   /***************************************************************************************/
   /***************************************************************************************/
@@ -308,7 +522,15 @@ var UnitTests = new function()
   /***************************************************************************************/
   this.Fail = function(err)
   {
-    this.Errors.push(err);
+    this.Output.Append("<div class='fail'>" + err + "</div>");
+    ++this.NumErrors;
+  }
+
+  /***************************************************************************************/
+  this.Assert = function(val1, val2, name, index)
+  {    
+    if(val1 != val2)
+      this.Fail(name + " (" + index + ") unit test failed!");
   }
 
   /***************************************************************************************/
@@ -317,21 +539,24 @@ var UnitTests = new function()
     if(v1 != v2)
       this.Fail(name + "FormatTest (" + num + ") unit test failed!");
   }
+
+  /***************************************************************************************/
+  this.Run = function(sb)
+  {
+    this.Output = sb;
+    this.NumErrors = 0;
+
+    UnitTests.IfAnyTest();
+    UnitTests.ArrayPackTest();
+    UnitTests.ExpressionTest();
+    UnitTests.replaceAllTest();
+    UnitTests.StringBuilderTest();
+    UnitTests.InheritTest();
+    UnitTests.FormatTest();
+    UnitTests.DOMStringBuilderTest();
+    UnitTests.ArrayTest();
+    UnitTests.UrlTest();
+
+    return this.NumErrors;
+  }
 }
-
-/***************************************************************************************/
-/***************************************************************************************/
-$(document).ready(function() 
-{
-  UnitTests.IfAnyTest();
-  UnitTests.ArrayPackTest();
-  UnitTests.ExpressionTest();
-  UnitTests.replaceAllTest();
-  UnitTests.StringBuilderTest();
-  UnitTests.InheritTest();
-  UnitTests.FormatTest();
-  UnitTests.DOMStringBuilderTest();
-
-  if(UnitTests.Errors.length > 0)
-    alert(UnitTests.Errors.join("\r\n"));
-});

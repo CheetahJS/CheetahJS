@@ -48,6 +48,12 @@ function TestBed()
     }
 
     /***************************************************************************************/
+    this.AssertEqual = function(val1, val2)
+    {
+      this.Assert(val1 == val2);
+    }
+
+    /***************************************************************************************/
     this.AssertContent = function(id, val)
     {
       var html = $.trim($(id).html());
@@ -63,7 +69,7 @@ function TestBed()
   }
 
   /***************************************************************************************/
-  this.Test = function(num, model, fn)
+  this.Test = function(num, model, fn, alternateDelimiters)
   {
     var self = this;
 
@@ -73,6 +79,17 @@ function TestBed()
 
       if(model != null)
       {
+        if(alternateDelimiters)
+        {
+          Cheetah.StartDelimiter = "{{";
+          Cheetah.EndDelimiter = "}}";
+        }
+        else
+        {
+          Cheetah.StartDelimiter = "//";
+          Cheetah.EndDelimiter = "//";
+        }
+
         vm.ProcessModel(model, function()
         {
           fn(new TestContext(vm, num));
@@ -133,6 +150,12 @@ function TestBed()
   }
 
   /***************************************************************************************/
+  this.ClearResults = function()
+  {  
+    $("#testresults_inner").html("");
+  }
+
+  /***************************************************************************************/
   this.WriteResults = function()
   {
     $("#count").removeClass("failed");
@@ -140,6 +163,12 @@ function TestBed()
     var sb        = new Cheetah.StringBuilder();
     var index     = 1;
     var numFailed = 0;
+
+    sb.Append("<div class='test'>API Unit Tests</div>");
+    numFailed = UnitTests.Run(sb);
+
+    if(numFailed == 0)
+      sb.Append("<div class='success'>All succeeded</div>");
 
     while(index < 1000)
     {

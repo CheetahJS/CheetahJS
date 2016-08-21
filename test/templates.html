@@ -35,7 +35,7 @@
 
 </ch-template>
 
-<ch-template name="Chooser">
+<ch-template name="Chooser" bind="object" onchoose="string">
 
   <ch-action name="onchoose">
     <ClassSetter select=".choice" remove="sel">.</ClassSetter>
