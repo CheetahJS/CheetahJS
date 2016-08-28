@@ -1,4 +1,15 @@
-﻿
+﻿﻿/*****************************************************************************/
+/*                                                                           */
+/*    CheetahJS - "Because it's fast!"                                       */
+/*                                                                           */
+/*       An MVVM Javascript Library for fast web development                 */
+/*                                                                           */
+/*   Copyright (c) 2015-2016 - Jim Lightfoot                                 */
+/*                                                                           */
+/*      This software is available under the MIT license (MIT)               */
+/*                                                                           */
+/*****************************************************************************/ 
+
 /***************************************************************************************/
 var TableTransform = new function()
 {
@@ -72,3 +83,22 @@ var TableHeaderCellTransform = new function()
 
   Cheetah.RegisterTransform(this);
 }
+
+/***************************************************************************************/
+var SelectTransform = new function()
+{
+  this.Name = "cx:select";
+  this.NewName = "select";
+
+  Cheetah.RegisterTransform(this);
+}
+
+/***************************************************************************************/
+var OptionTransform = new function()
+{
+  this.Name = "cx:option";
+  this.NewName = "option";
+
+  Cheetah.RegisterTransform(this);
+}
+

@@ -793,6 +793,8 @@ _cheetah.TextNode = function(vm, parentElement, templateElement, model)
 /*****************************************************************************/
 _cheetah.VariableTextNode = function(vm, parentElement, templateElement, model, varElem)
 {
+  templateElement.nodeValue = $.trim(templateElement.nodeValue);
+
   _cheetah.TextNode.call(this, vm, parentElement, templateElement, model, true);
 
   this.VariableElement = varElem;
@@ -1079,6 +1081,12 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
   {
     if(this.NewElement)
     {
+      if(this.NewElement.childNodes.length > 0)
+      {
+        insert.insert = 2;
+        return this.NewElement.childNodes[0];
+      }
+
       insert.insert = false;
       return this.NewElement;
     }
@@ -1173,7 +1181,10 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
           var newInsertParent = ec.NewElement ? ec.NewElement : ec.GetLastRenderedChildElement();
 
           if(newInsertParent)
+          {
             parent = newInsertParent;
+            insert = 1;
+          }
         }
       }
     });
@@ -1448,13 +1459,16 @@ _cheetah.VariableBuilder = function(context, name)
   /*****************************************************************************/  
   _cheetah.VariableBuilder.prototype.SetContents = function(element, txt)
   {
+    if(typeof txt == "string")
+      txt = $.trim(ch.NormalizeText(txt));
+
     this.Context.SetVar(this.Name, txt);
   }
 
   /*****************************************************************************/  
   _cheetah.VariableBuilder.prototype.RenderText = function(element, insert, renderParent, txt)
   {
-    this.Context.SetVar(this.Name, txt);
+    this.SetContents(null, txt);
   }
 
   function NonCheetahErr()
@@ -1489,7 +1503,7 @@ _cheetah.VariableBuilder = function(context, name)
   /*****************************************************************************/  
   _cheetah.VariableBuilder.prototype.AppendText = function(parent, txt)
   {
-    this.Context.SetVar(this.Name, txt);
+    this.SetContents(null, txt);
   }
 
   /*****************************************************************************/  
@@ -1639,7 +1653,10 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
                     var newInsertParent = ecNew.NewElement ? ecNew.NewElement : ecNew.GetLastRenderedChildElement();
 
                     if(newInsertParent)
+                    {
                       parent = newInsertParent;
+                      insert = 1;
+                    }
                   }
                 }
                 index++;
@@ -2120,9 +2137,11 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
     }
 
     // Create the new html element
-    this.NewElement = insert ? this.Builder.InsertAfter(parent, this.Transform.NewName)  
-                             : this.Builder.AppendChild(parent, this.Transform.NewName);  
-
+    if(insert == 2)
+      this.NewElement = this.Builder.InsertBefore(parent, this.Transform.NewName);
+    else                             
+      this.NewElement = insert ? this.Builder.InsertAfter(parent, this.Transform.NewName)  
+                               : this.Builder.AppendChild(parent, this.Transform.NewName);  
 
     if(this.NewElement)
       this.NewElement.$context = this;
