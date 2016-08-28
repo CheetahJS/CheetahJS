@@ -709,31 +709,23 @@ var CheetahTests = new function()
 
     this.Test(20, model, function(test)
     {
-      test.AssertEqual($("#test20 .car").length, 4);
-      test.AssertContent("#test20 div:nth-of-type(5) ~ button:first-of-type", "Add New Car");
-      test.AssertContent("#test20 div:nth-of-type(5) ~ button:nth-of-type(2)", "Add And Remove Car");
+      test.AssertEqual($("#test20_inner > .car").length, 4);
+      test.AssertContent("#test20_inner > div:nth-of-type(5) ~ button:first-of-type", "Add New Car");
+      test.AssertContent("#test20_inner > div:nth-of-type(5) ~ button:nth-of-type(2)", "Add And Remove Car");
 
       $("#btnTest20_1").click();
 
-      test.AssertEqual($("#test20 .car").length, 5);
+      test.AssertEqual($("#test20_inner > .car").length, 5);
 
-      test.AssertContent("#test20 div:nth-of-type(2) h4", "1969 Chevy Malibu");
-      test.AssertContent("#test20 div:nth-of-type(3) h4", "1965 Chevy Corvette");
-      test.AssertContent("#test20 div:nth-of-type(4) h4", "1970 Chevy Camaro");
-      test.AssertContent("#test20 div:nth-of-type(5) h4", "2016 Chevy Silverado");
-      test.AssertContent("#test20 div:nth-of-type(6) h4", "1967 Chevy Nova");
+      test.AssertContent("#test20_inner > div:nth-of-type(2) h4", "1969 Chevy Malibu");
+      test.AssertContent("#test20_inner > div:nth-of-type(3) h4", "1965 Chevy Corvette");
+      test.AssertContent("#test20_inner > div:nth-of-type(4) h4", "1970 Chevy Camaro");
+      test.AssertContent("#test20_inner > div:nth-of-type(5) h4", "2016 Chevy Silverado");
+      test.AssertContent("#test20_inner > div:nth-of-type(6) h4", "1967 Chevy Nova");
 
-      test.AssertContent("#test20 div:nth-of-type(6) ~ button:first-of-type", "Add New Car");
-      test.AssertContent("#test20 div:nth-of-type(6) ~ button:nth-of-type(2)", "Add And Remove Car");
+      test.AssertContent("#test20_inner > div:nth-of-type(6) ~ button:first-of-type", "Add New Car");
+      test.AssertContent("#test20_inner > div:nth-of-type(6) ~ button:nth-of-type(2)", "Add And Remove Car");
 
-    /*  $("#btnTest20_2").click();
-      test.Assert($("#test20 .car").length == 5);
-      test.Assert($("#test20 .car:nth-of-type(2) p").html() == "Index: 1");
-      test.Assert($("#test20 .car:nth-of-type(3) p").html() == "Index: 2");
-      test.Assert($("#test20 .car:nth-of-type(4) p").html() == "Index: 3");
-      test.Assert($("#test20 .car:nth-of-type(5) p").html() == "Index: 4");
-      test.Assert($("#test20 .car:nth-of-type(3) h4").html() == "1968 Chevy Barracuda");
-      */
     });
   }
   
@@ -2214,6 +2206,108 @@ var CheetahTests = new function()
     });
   }
 
+  //***************************************************************************************
+  this.Test70 = function()
+  {
+    
+    var model = {
+      Make: "Chevy",
+      Models:
+      [
+        {
+          Name: "Malibu",
+          Color: "Green",
+          Year: 1969
+        },
+        {
+          Name: "Corvette",
+          Color: "Red",
+          Year: 1965
+        },
+        {
+          Name: "Camaro",
+          Color: "Black",
+          Year: 1970
+        },
+        {
+          Name: "Silverado",
+          Color: "Blue",
+          Year: 2016
+        }
+      ]
+    };
+
+    this.Test(70, model, function(test)
+    {
+      test.AssertEqual($("#test70_inner > div:nth-of-type(2) > .car").length, 4);
+      test.AssertContent("#test70_inner > div:nth-of-type(2) > div:nth-of-type(4) ~ button:first-of-type", "Add New Car");
+
+      $("#btnTest70_1").click();
+
+      test.AssertEqual($("#test70_inner > div:nth-of-type(2) > .car").length, 5);
+
+      test.AssertContent("#test70_inner > div:nth-of-type(2) > div:nth-of-type(1) h4", "1969 Chevy Malibu");
+      test.AssertContent("#test70_inner > div:nth-of-type(2) > div:nth-of-type(2) h4", "1965 Chevy Corvette");
+      test.AssertContent("#test70_inner > div:nth-of-type(2) > div:nth-of-type(3) h4", "1970 Chevy Camaro");
+      test.AssertContent("#test70_inner > div:nth-of-type(2) > div:nth-of-type(4) h4", "2016 Chevy Silverado");
+      test.AssertContent("#test70_inner > div:nth-of-type(2) > div:nth-of-type(5) h4", "1967 Chevy Nova");
+
+      test.AssertContent("#test70_inner > div:nth-of-type(2) > div:nth-of-type(5) ~ button:first-of-type", "Add New Car");
+
+    });
+  }
+  
+  //***************************************************************************************
+  this.Test71 = function()
+  {
+    
+    var model = {
+      Make: "Chevy",
+      Models:
+      [
+        {
+          Name: "Malibu",
+          Color: "Green",
+          Year: 1969
+        },
+        {
+          Name: "Corvette",
+          Color: "Red",
+          Year: 1965
+        },
+        {
+          Name: "Camaro",
+          Color: "Black",
+          Year: 1971
+        },
+        {
+          Name: "Silverado",
+          Color: "Blue",
+          Year: 2016
+        }
+      ]
+    };
+
+    this.Test(71, model, function(test)
+    {
+      test.AssertEqual($("#test71_inner > div:nth-of-type(2) > .car").length, 4);
+      test.AssertContent("#test71_inner > div:nth-of-type(2) > div:nth-of-type(4) ~ button:first-of-type", "Add New Car");
+
+      $("#btnTest71_1").click();
+
+      test.AssertEqual($("#test71_inner > div:nth-of-type(2) > .car").length, 5);
+
+      test.AssertContent("#test71_inner > div:nth-of-type(2) > div:nth-of-type(1) h4", "1969 Chevy Malibu");
+      test.AssertContent("#test71_inner > div:nth-of-type(2) > div:nth-of-type(2) h4", "1965 Chevy Corvette");
+      test.AssertContent("#test71_inner > div:nth-of-type(2) > div:nth-of-type(3) h4", "1971 Chevy Camaro");
+      test.AssertContent("#test71_inner > div:nth-of-type(2) > div:nth-of-type(4) h4", "2016 Chevy Silverado");
+      test.AssertContent("#test71_inner > div:nth-of-type(2) > div:nth-of-type(5) h4", "1967 Chevy Nova");
+
+      test.AssertContent("#test71_inner > div:nth-of-type(2) > div:nth-of-type(5) ~ button:first-of-type", "Add New Car");
+
+    });
+  }
+  
 }
 
 /***************************************************************************************/

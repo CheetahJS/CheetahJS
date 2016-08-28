@@ -41,7 +41,7 @@
 
     <div id="xxtest1">
       <h3>Test1</h3>
-       <input type="text" value="//Color//" /><br />
+      <input type="text" value="//Color//" /><br />
     </div>
 
     <div id="test1">
@@ -262,7 +262,9 @@
         <h3>Test17</h3>
         <div><br /></div>
 
-        <ch-variable name="make">//Make// is cool!</ch-variable>
+        <ch-variable name="make">
+          //Make// is cool!
+        </ch-variable>
 
         <h2>Make: //$make//</h2>
         <ch-bind on="Models">
@@ -1725,6 +1727,46 @@
         </ch-else>
       </button>
 
+    </div>
+
+    <div id="test70">
+      <div id="test70_inner">
+        <h3>Test70</h3>
+        <div><br /></div>
+
+        <div>
+          <ch-bind on="Models">
+            <div class="car" id="test70_//Name//">
+              <h4>//Year// //$$root.Make// //Name//</h4>
+            </div>
+          </ch-bind>
+
+          <button id="btnTest70_1" ch-click="AddNewCar">Add New Car</button>
+
+        </div>
+      </div>
+    </div>
+
+    <div id="test71">
+      <div id="test71_inner">
+        <h3>Test71</h3>
+        <div><br /></div>
+
+        <ch-variable name="models">
+          //Models//
+        </ch-variable>
+
+        <div>
+          <ch-bind on="$models">
+            <div class="car" id="test71_//Name//">
+              <h4>//Year// //$$root.Make// //Name//</h4>
+            </div>
+          </ch-bind>
+
+          <button id="btnTest71_1" ch-click="AddNewCar">Add New Car</button>
+
+        </div>
+      </div>
     </div>
 
     <!-- ***************************************************************** -->
