@@ -2308,6 +2308,53 @@ var CheetahTests = new function()
     });
   }
   
+  //***************************************************************************************
+  this.Test72 = function()
+  {
+    
+    var model = {
+      Make: "Chevy",
+      Models:
+      [
+        {
+          Name: "Corvette",
+          Color: "Red",
+          Year: 1965,
+          Count: 0
+        },
+        {
+          Name: "Camaro",
+          Color: "Black",
+          Year: 1971,
+          Count: 0
+        }
+      ]
+    };
+
+    this.Test(72, model, function(test)
+    {
+      test.AssertContent("#test72_inner h1", "0");
+
+      $("#Test72_btn0").click();
+      $("#Test72_btn0").click();
+      $("#Test72_btn0").click();
+      $("#Test72_btn1").click();
+      $("#Test72_btn1").click();
+
+      test.AssertContent("#test72_inner h1", "5");
+      test.AssertContent("#test72_inner > div:nth-of-type(2) > div:first-of-type p:nth-of-type(2)", "3");
+      test.AssertContent("#test72_inner > div:nth-of-type(2) > div:nth-of-type(2) p:nth-of-type(2)", "2");
+
+      test.Assert(!$("#test72_inner > div:nth-of-type(2) > div:first-of-type").hasClass("green"));
+      $("#Test72_btn0").click();
+      $("#Test72_btn0").click();
+      test.Assert($("#test72_inner > div:nth-of-type(2) > div:first-of-type").hasClass("green"));
+      $("#Test72_btn0").click();
+      test.Assert(!$("#test72_inner > div:nth-of-type(2) > div:first-of-type").hasClass("green"));
+
+    });
+  }
+  
 }
 
 /***************************************************************************************/

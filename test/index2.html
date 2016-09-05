@@ -1769,6 +1769,30 @@
       </div>
     </div>
 
+    <div id="test72">
+      <div id="test72_inner">
+        <h3>Test72</h3>
+        <div><br /></div>
+
+        <h1>//Models.Sum(m => m.Count)//</h1>
+
+        <div>
+          <ch-bind on="Models">
+
+          <ch-variable name="percent">//$$root.Models.PercentageOfTotal(Count, m => m.Count)//</ch-variable>
+
+            <div ch-class="green: Count == 5" class="car" id="test72_//Name//">
+              <h4>//Year// //$$root.Make// //Name//</h4>
+              <p>//Math.round($percent)//</p>
+              <p>//Count//</p>
+              <button id="Test72_btn//$$index//" ch-click="Count: Count + 1">Add</button>
+            </div>
+          </ch-bind>
+
+        </div>
+      </div>
+    </div>
+
     <!-- ***************************************************************** -->
     <!-- *** End of Tests                                              *** -->
     <!-- ***************************************************************** -->
