@@ -27,7 +27,7 @@ Array.prototype.ToDictionary = function(fn)
 
   this.ForEach( function(item)
   {
-    var key = fn(item);
+    var key = fn ? fn(item) : item;
 
     dict[key] = item;
   });
@@ -45,6 +45,194 @@ Array.prototype.Reduce = function(fn, init)
     val = fn(val, this[i]);
 
   return val;
+}
+
+/***************************************************************************************/
+Array.prototype.Sum = function(fn) 
+{
+  if(this.length == 0)
+    return 0;
+
+  return this.Reduce( function(val, item) 
+                      { 
+                        var newVal = Number(fn ? fn(item) : item);
+
+                        if(ch.IsValidNumber(newVal))
+                          return val + newVal; 
+
+                        return val;
+                      }, 
+                      0);
+}
+
+/***************************************************************************************/
+Array.prototype.Min = function(fn) 
+{
+  if(this.length == 0)
+    return undefined;
+
+  var min = undefined;
+
+  this.ForEach(  function(item)
+                 {
+                    var val = fn ? fn(item) : Number(item);
+
+                    if(val)
+                      min = min == undefined ? val : Math.min(min, val);
+                 });
+
+  return min;
+}
+
+/***************************************************************************************/
+Array.prototype.Max = function(fn) 
+{
+  if(this.length == 0)
+    return undefined;
+
+  var max = undefined;
+
+  this.ForEach(  function(item)
+                 {
+                    var val = fn ? fn(item) : Number(item);
+
+                    if(val)
+                      max = max == undefined ? val : Math.max(max, val);
+                 });
+
+  return max;
+}
+
+/***************************************************************************************/
+Array.prototype.Mean = function(fn) 
+{
+  if(this.length == 0)
+    return undefined;
+
+  var max = undefined;
+  var min = undefined;
+
+  this.ForEach(  function(item)
+                 {
+                    var val = fn ? fn(item) : Number(item);
+
+                    if(val)
+                    {
+                      max = !max ? val : Math.max(max, val);
+                      min = !min ? val : Math.min(min, val);
+                    }
+                 });
+
+  return (max + min) / 2;
+}
+
+/***************************************************************************************/
+Array.prototype.Average = function(fn) 
+{
+  var sum = this.Sum(fn);
+
+  return sum / this.length;
+}
+
+/***************************************************************************************/
+Array.prototype.PercentageOfTotal = function(val, fn) 
+{
+  if(!val)
+    return 0;
+
+  var sum = this.Sum(fn);
+
+  if(!sum)
+    return 0;
+
+  return (val / sum) * 100;
+}
+
+/***************************************************************************************/
+function ToDate(val)
+{
+  if(!val)
+    return val;
+
+  if(val instanceof Date)
+    return val;
+
+  val = new Date(val);
+
+  if(isNaN(val.getTime()))
+    return null;
+
+  return val;
+}
+
+/***************************************************************************************/
+Array.prototype.MinDate = function(fn) 
+{
+  if(this.length == 0)
+    return undefined;
+
+  var min = undefined;
+
+  this.ForEach(  function(item)
+                 {
+                    var val = ToDate(fn ? fn(item) : item);
+
+                    if(val)
+                      min = !min ? val : (min < val ? min : val)
+                 });
+
+  return min;
+}
+
+/***************************************************************************************/
+Array.prototype.MaxDate = function(fn) 
+{
+  if(this.length == 0)
+    return undefined;
+
+  var max = undefined;
+
+  this.ForEach(  function(item)
+                 {
+                    var val = ToDate(fn ? fn(item) : item);
+
+                    if(val)
+                      max = !max ? val : (max > val ? max : val)
+                 });
+
+  return max;
+}
+
+
+/***************************************************************************************/
+Array.prototype.MeanDate = function(fn) 
+{
+  if(this.length == 0)
+    return undefined;
+
+  var max = undefined;
+  var min = undefined;
+
+  this.ForEach(  function(item)
+                 {
+                    var val = ToDate(fn ? fn(item) : item);
+
+                    if(val)
+                    {
+                      max = !max ? val : (max > val ? max : val)
+                      min = !min ? val : (min < val ? min : val)
+                    }
+                 });
+
+  return new Date((max.getTime() + min.getTime()) / 2);
+}
+
+/***************************************************************************************/
+Array.prototype.Update = function(fn) 
+{
+  this.ForEach(fn);
+
+  return this;
 }
 
 /***************************************************************************************/
@@ -76,7 +264,7 @@ Array.prototype.Pack = function(sep, fn)
 
   return this.Reduce( function(val, item)
   {
-    var newVal = fn(item);
+    var newVal = fn ? fn(item) : item;
 
     if(val == "")
       return(newVal);
@@ -93,6 +281,8 @@ Array.prototype.Append = function(list)
 
   for(var i = 0; i < n; ++i)
     this.push(list[i]);
+
+  return this;
 }
 
 /***************************************************************************************/
@@ -246,6 +436,17 @@ String.prototype.FirstInList = function(separator)
     return this;
 
   return this.substr(0, this.indexOf(separator));
+}
+
+/***************************************************************************************/
+String.prototype.NthInList = function(n, separator) 
+{
+  if(n == 0) 
+    return this.FirstInList(separator);
+
+  var list = this.split(separator);
+
+  return list[n];
 }
 
 /***************************************************************************************/

@@ -18,13 +18,29 @@
 /***************************************************************************************/
 
   var _cheetah = {
-                    Operators: ["[", "]", "*", "/", "+", "-", "%", "<", "<=", ">", ">=", "==", "!=", "!=", "!", "||", "?", ":", "(", ")", "~", "^", ">>", "<<", ",", "=>", "and", "or", "="]
+                    KnownLibraries: {Math: true, jQuery: true, ch: true},
+                    TransformOperators: {and: "&&", or: "||"},
+                    Operators: ["[", "]", "*", "/", "++", "--", "+=", "-=", "*=", "/=", "+", "-", "%", "<", "<=", ">", ">=", "==", "===", "!=", "!==", "!", "||", "&&", "?", ":", "(", ")", "~", "^", ">>", "<<", ",", "=>", "and", "or", "="],
+                    LiteralValues: {xNaN: true, xundefined: true, xnull: true, xtrue: true, xfalse: true},
+                    dOperators: null
                  };
 
   /*****************************************************************************/
   Cheetah.IsExpressionText = function(val)
   {
     return _cheetah.Operators.IfAny( function(item) {return val.indexOf(item) != -1; })
+  }
+
+  /*****************************************************************************/
+  _cheetah.IsOperator = function(val)
+  {
+    return _cheetah.dOperators[val];
+  }
+
+  /*****************************************************************************/
+  _cheetah.IsLiteralValue = function(val)
+  {
+    return _cheetah.LiteralValues["x" + val];
   }
 
   /*****************************************************************************/
@@ -71,6 +87,9 @@
 
     /*****************************************************************************/
     {
+      if(_cheetah.dOperators == null)
+        _cheetah.dOperators = _cheetah.Operators.ToDictionary();
+
       var c    = new _cheetah.Compiler();
       var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1});
 
@@ -102,7 +121,26 @@
         token = this._token;
 
       if(!ch.IsEmpty(token))
-        this._sb.push(token);
+      {
+        var op = null;
+
+        if(_cheetah.Operators.IfAny(  function(item) 
+                                      {
+                                        if(token.indexOf(item) == 0)
+                                        {
+                                          op = item;
+                                          return true;
+                                        }
+
+                                        return false;
+                                      }) && token != op)
+        {
+          this._sb.push(op); 
+          this._sb.push(token.substr(op.length)); 
+        }
+        else
+          this._sb.push(token); 
+      }
 
       this._token = "";
       this._tokenType = 0;
@@ -114,15 +152,16 @@
       var numRegex2       = /^\s*(\+|-)?((\d+(\.\d+)?)|(\.\d+))\s*$/;
       var numRegex        = /^[-+]?[0-9]+$/;
       var puncRegex       = /[{}:;\(\)?\]\[+,]/;
-      var opRegex         = /[!=<>\|&/\*\^\+]/;
+      var opRegex         = /[!=<>\|&/\*\^\+\~\?\:]/;
       var n               = expression.length;
+      var prev            = null;
 
       for(var i = 0; i < n; ++i)
       {
         var ch = expression[i];
       
         // String literals
-        if(ch == '\'')
+        if(ch == '\'' && prev != '\\')
         {
           if(this._tokenType == 2)
           {
@@ -181,26 +220,16 @@
           this._token += String(ch);
           this._tokenType = 1;
         }
+
+        prev = ch;
       }
 
       this.PushToken();
 
-      var tokens = ResolveTokens([], this._sb, modelTokens, varTokens, injected);
-      var result = PackTokens(tokens);
+      var resolver = new TokenResolver(injected);
+      var result = resolver.Resolve(this._sb, modelTokens, varTokens);
       
       return("return " + result + ";");
-
-      /*****************************************************************************/
-      function PackTokens(tokens)
-      {
-        return tokens.Pack("", function(part) 
-        {
-          if(part.type.indexOf("function") == 0)
-            return part.token + "(" + PackTokens(part.tokens) + ")";
-
-          return part.token; 
-        });
-      }
 
       /*****************************************************************************/
       function IsNumberChar(ch)
@@ -210,221 +239,183 @@
 
         return(ch == '.' || ch == '-');
       }
+    }
 
-      /*****************************************************************************/
-      function MakeToken(token, type)
-      {      
-        return {token: token, type: type ? type : "sliteral"};
-      }
+  /*****************************************************************************/
+  /*****************************************************************************/
+  function TokenResolver(injected)
+  {
+    this._output         = [];
+    this._delimiterStack = [];
+    this._paramStack     = [];
+    this._injected       = injected;
+  }
 
-      /*****************************************************************************/
-      function ResolveTokens(output, sb, arr, vars, injected)
+    /*****************************************************************************/
+    TokenResolver.prototype.Resolve = function(tokens, modelTokens, varTokens)
+    {      
+      var self              = this;
+      var output            = this._output;
+      var paramStack        = this._paramStack;
+      var delimiterStack    = this._delimiterStack;
+      var injected          = this._injected;
+      var containsFunctions = false;
+
+      tokens.ForEach( function(token) 
       {
-        var nTokens = sb.length;
-        var tokenStack = [];
-
-        for(var i = 0; i < nTokens; ++i)
+        if(token == "=>")
         {
-          var token = sb[i];
+          delimiterStack.push(token);
+          paramStack.push("()");
+          containsFunctions = true;
 
-          if(token.indexOf("'") == 0 || token.indexOf("\"") == 0)
-          {
-            output.push(MakeToken(token));
-            continue;
-          }
+          var last = output.pop().replace("__model.", "");
+          var fn = "function (";
 
-          if(token == "NaN" || token == "undefined" || token == "null" || token == "true" || token == "false")
+          if(last == ")")
           {
-            output.push(MakeToken(token, "literal"));
-            continue;
-          }
+            var params = [];
 
-          if(!isNaN(parseFloat(token)))
-          {
-            output.push(MakeToken(token, "number"));
-            continue;
-          }
-
-          if(token == "(")
-          {
-            var previousToken = output.peek();
-            
-            if(previousToken && previousToken.type == "prop")
+            while(true)
             {
-              previousToken.type = "function";
-              previousToken.parentOutput = output;
-              previousToken.parent = tokenStack.peek();
-              tokenStack.push(previousToken);
+              last = output.pop();
 
-              output = [];
-              continue;
-            }
+              if(last == "(")
+                break;
 
-            previousToken = MakeToken("", "function_e");
+              last = last.replace("__model.", "");
 
-            previousToken.parentOutput = output;
-
-            if(tokenStack.peek() && tokenStack.peek().isLambda)
-              previousToken.isLambda = true;
-
-            previousToken.parent = tokenStack.peek();
-            tokenStack.push(previousToken);
-
-            output.push(previousToken);
-
-            output = [];
-            continue;
-          }
-
-          if(token == ")" && tokenStack.length != 0)
-          {
-            if(tokenStack.peek().type.indexOf("function") == 0)
-            {
-              var fnToken = tokenStack.pop();
-
-              if(fnToken.isLambda && fnToken.type == "function")
-                output.push(MakeToken("; }"));
-
-              fnToken.tokens = output;
-              output = fnToken.parentOutput;
-              continue;
-            }
-          }
-
-          if(token == "=>")
-          {
-            var topStack = tokenStack.peek();
-
-            topStack.isLambda = true;
-
-            if(output[0].type == "function_e")
-            {
-              var ptoken = output[0];
-
-              ptoken.token = "function";
-              ptoken.isLambda = true;
-              output.push(MakeToken(" { return "));
-
-              var n = ptoken.tokens.length;
-              var params = {};
-
-              for(var j = 0; j < n; ++j)
+              if(last != ",")
               {
-                var tokenp = ptoken.tokens[j];
-                var param  = tokenp.token.replace("__model.", "")
-
-                tokenp.token = param;
-
-                if(param != ",")
-                  params[param] = param;
+                paramStack.push(last);
+                params.push(last);
               }
-
-              //ptoken.params = params;
-              topStack.parentOutput[0].params = params;
-            }
-            else
-            {
-              var param = output[0].token.replace("__model.", "");
-
-              output[0] = MakeToken("function(" + param + ") { return ");
-
-              if(!topStack.parentOutput[0].params)
-                topStack.parentOutput[0].params = {};
-
-              topStack.parentOutput[0].params[param] = param;
             }
 
-            continue;
+            fn += params.reverse().Pack(", ");
           }
-
-          if(_cheetah.Operators.indexOf(token) != -1)
+          else
           {
-            switch(token)
-            {
-              case "=":   token = "=="; break;
-              case "and": token = "&&"; break;
-              case "or":  token = "||"; break;
-            }
-
-            output.push(MakeToken(token, "operator"));
-            continue;
+            paramStack.push(last);
+            fn += last;
           }
 
-          var neg = token.indexOf("!") == 0;
-
-          if(neg)
-            token = token.substr(1);
-
-          var part = token;
-          token = "";
-
-          if(part.indexOf("this.") == 0)
-            part = part.replace("this.", "__vm.");
-          else if(part.indexOf("ch.") == 0)
-          {
-            ;
-          }
-          else if(part.indexOf("$$") == 0)
-          {
-            var first = part.FirstInList(".");
-
-            if(injected[first])
-            {
-              token = part;
-              part = "__injected." + part;
-            }
-            else if(!tokenStack.peek() || !tokenStack.peek().isLambda)
-            {
-              token = part;
-              part = "__model." + part;
-            }
-          }
-          else if(part.indexOf("$") == 0)
-          {
-            var varName = part.TrimAfterIncluding(".");
-            var remaining = part.indexOf(".") != -1 ? part.TrimBefore(".") : "";
-            vars.push(varName.substr(1));
-
-            part = "__ec.GetVar('" + varName.substr(1) + "')" + remaining;
-          }
-          else if(part.indexOf(".") != 0) // && (!tokenStack.peek() || !tokenStack.peek().isLambda))
-          {
-            if(!IsLambdaParam(tokenStack.peek(), part.TrimAfterIncluding(".")))
-            {
-              token = part;
-              part = "__model." + part;
-            }
-          }
-
-          if(token != "")
-            arr.push(token);
-
-          if(neg)   
-            part = "!" + part;
-
-          output.push(MakeToken(part, "prop"));
+          output.push(fn + ") { return ");
         }
+        else if(token == "(" || token == "[")
+        {
+          output.push(token);
+          delimiterStack.push(token);
+        }
+        else if(token == "]")
+        {
+          output.push(token);
+          delimiterStack.pop();
+        }
+        else if(token == ")" || token == ",")
+        {
+          self.CheckLambda();
+          output.push(token);
 
-        return output;
-      }
+          if(token == ")")
+            delimiterStack.pop();
+        }
+        else if(token == "(" || token == "[")
+        {
+          if(!_cheetah.IsOperator(output.peek()))
+            containsFunctions = true;
 
-      /*****************************************************************************/
-      function IsLambdaParam(token, part)
+          output.push(token);
+          delimiterStack.push(token);
+        }
+        else if(_cheetah.TransformOperators[token])
+        {
+          output.push(" " + _cheetah.TransformOperators[token] + " ");
+        }
+        else if(token.indexOf("'") == 0 || token.indexOf("\"") == 0)
+          output.push(token);
+        else if(_cheetah.IsLiteralValue(token))
+          output.push(token);
+        else if(!isNaN(parseFloat(token)))
+          output.push(token);
+        else if(_cheetah.IsOperator(token))
+          output.push(token);
+        else 
+        {
+          var first = token.FirstInList(".");
+
+          if(first.indexOf("$$") == 0)
+          {
+            if(injected[first])
+              output.push("__injected." + token);
+            else 
+              output.push("__model." + token);
+          }
+          else if(first.indexOf("$") == 0)
+          {
+           var variable = first.substr(1);
+
+            output.push("__ec.GetVar('" + variable + "')" + token.substr(first.length));
+            varTokens.push(variable);
+          }
+          else if(first == "" || _cheetah.KnownLibraries[first])
+          {
+            output.push(token);
+          }
+          else if(first == "this")
+          {
+            output.push(token.replace("this.", "__vm."));
+          }
+          else if(!self.IsLambdaParam(first))
+            output.push("__model." + token);
+          else 
+            output.push(token);
+        }
+      });
+
+      output.ForEach( function(item)
       {
-        if(!token)
-          return false;
+        if(item.indexOf("__model.") == 0)
+          modelTokens.push(item.substr("__model.".length));
+        else if(item.indexOf("__injected.$$") == 0)
+          modelTokens.push(item.substr("__injected.".length));
+      });
 
-        if(token.isLambda && token.params && token.params[part])
-          return true;
+      if(containsFunctions)
+        modelTokens.push("__expr__");
 
-        if(token.parentOutput && token.parentOutput[0].params && token.parentOutput[0].params[part])
-          return true;
+      return this._output.Pack("");
+    }
 
-        if(token.parent)
-            return IsLambdaParam(token.parent, part);
+    /*****************************************************************************/
+    TokenResolver.prototype.CheckLambda = function()
+    { 
+      if(this._delimiterStack.peek() == "=>")
+      {
+        this._output.push("; }");
+        this._delimiterStack.pop();
 
-        return false;
+        var param = this._paramStack.pop();
+
+        while(param != "()")
+          param = this._paramStack.pop()
       }
+    }
+
+    /*****************************************************************************/
+    TokenResolver.prototype.IsLambdaParam = function(param)
+    { 
+      var n = this._paramStack.length;
+
+      for(var i = n-1; i >=0; --i)
+      { 
+        var item = this._paramStack[i];
+
+        if(item == param)
+          return true;
+      }
+
+      return false;
     }
 
 }(Cheetah, document);

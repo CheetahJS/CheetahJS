@@ -3264,7 +3264,12 @@ _cheetah.Property = function(prop, model)
     try
     {
       if(typeof _prop == "string")
+      {
+        if(_prop == "__expr__")
+          return + _prop;
+
         return(_model[_prop]);
+      }
 
       var n = _prop.length;
       var model = _model;
@@ -3402,6 +3407,10 @@ _cheetah.ModelWatcher = function(vm, context)
     this.Changed = function(model)
     {
       var newVal  = this.Attribute.GetValue();
+
+      if(newVal == "__expr__")
+        return true;
+
       var changed = this.Value != newVal;
 
       this.Value = newVal;
@@ -3773,7 +3782,10 @@ _cheetah.ClassWatcher = function(vm, context, expr)
       self.Parts.push(cs); 
 
       if(cs.Condition != null)
+      {
         self.AddProperties(context, cs.Condition.ModelTokens);
+        self.AddVars(context, cs.Condition.VarTokens);
+      }
     });
   }
 
@@ -3781,36 +3793,39 @@ _cheetah.ClassWatcher = function(vm, context, expr)
   /*****************************************************************************/
   function AttributeSetter(expr)
   {
-     var indx = expr.indexOf(":");
+    var indx = expr.indexOf(":");
 
-     if(indx == -1)
-     {
-       this.Name = expr;
-       this.Condition = null;
-     }
-     else
-     {
-       this.Name = $.trim(expr.substr(0, indx));
-       this.Condition = vm.CreateCondition(expr.substr(indx+1));
-     }
+    if(indx == -1)
+    {
+      this.Name = expr;
+      this.Condition = null;
+    }
+    else
+    {
+      this.Name = $.trim(expr.substr(0, indx));
+      this.Condition = vm.CreateCondition(expr.substr(indx+1));
+    }
 
-     /*****************************************************************************/
-     this.Set = function(context, staticC)
-     {
-       if(this.Condition == null || this.Condition.Eval(context))
-       {
-          var c = this.Name;
+    /*****************************************************************************/
+    this.Set = function(context, staticC)
+    {
+      var set = this.Condition == null;
 
-          if(!ch.IsEmpty(staticC))
-             c = ch.Evaluate(staticC) + " " + c;
+      if(!set)
+        set = this.Condition.Eval(context);
 
-          context.NewElement.className = c;
+      var c = "";
 
-          return(true);
-       }
+      if(!ch.IsEmpty(staticC))
+          c = ch.Evaluate(staticC) + " ";
 
-       return(false);
-     }
+      if(set)
+        c += this.Name;
+
+      context.NewElement.className = $.trim(c);
+
+      return(set);
+    }
   }
 }
 
