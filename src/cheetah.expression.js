@@ -18,7 +18,7 @@
 /***************************************************************************************/
 
   var _cheetah = {
-                    KnownLibraries: {Math: true, jQuery: true, ch: true},
+                    KnownLibraries: {Math: true, jQuery: true, ch: true, String: true, Number: true},
                     TransformOperators: {and: "&&", or: "||"},
                     Operators: ["[", "]", "*", "/", "++", "--", "+=", "-=", "*=", "/=", "+", "-", "%", "<", "<=", ">", ">=", "==", "===", "!=", "!==", "!", "||", "&&", "?", ":", "(", ")", "~", "^", ">>", "<<", ",", "=>", "and", "or", "="],
                     LiteralValues: {xNaN: true, xundefined: true, xnull: true, xtrue: true, xfalse: true},
@@ -91,7 +91,7 @@
         _cheetah.dOperators = _cheetah.Operators.ToDictionary();
 
       var c    = new _cheetah.Compiler();
-      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1});
+      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1});
 
       if(expr.indexOf("return") == 0)
         _fn = new Function("__vm", "__model", "__injected", "__ec", expr);

@@ -2437,11 +2437,14 @@ _cheetah.Action = function(vm, context, element, parent)
       else
         value = childNode.innerHTML;
 
-      if(ch.IsEmpty(value))
+      if(!ch.IsValid(value))
       {
         _cheetah.LogError(5);
         return;
       }
+      
+      if(ch.IsEmpty(value))
+        value = "";
 
       var vm        = this.ViewModel;
       var condition = CreateCondition(vm, childNode);
@@ -2744,6 +2747,28 @@ _cheetah.Action = function(vm, context, element, parent)
         this.SetActionStep(context, childNode, function(evt) 
         {
           fn(evt);            
+        });
+
+        break;
+      }
+
+      case "run":
+      {
+        var expr = $.trim(childNode.innerHTML);
+
+        if(ch.IsEmpty(expr))
+          expr = ch.AttributeValue(childNode, "expr");
+
+        expr = _cheetah.RemoveExpressionDelimiters(expr);
+        expr = this.ViewModel.CreateExpression(expr);
+        
+        this.SetActionStep(context, childNode, function(evt) 
+        {
+          var inject =  {};
+
+          inject["$$target"] = evt.$model;
+
+          expr.Eval(context, evt.$model, inject);           
         });
 
         break;
@@ -3376,7 +3401,15 @@ _cheetah.ModelWatcher = function(vm, context)
 
     if(!modelCompare || modelCompare.$$id == undefined || modelCompare.$$id != model.$$id)
     {
-      modelCompare.$$parent = model.$$parent;
+      if(modelCompare)
+        modelCompare.$$parent = model.$$parent;
+      else if(model.$$parent)
+      {
+        // Item is being deleted, force the parent to redraw
+        delete model.$$parent.$$id;
+        return true;
+      }
+
       this.ReRender(modelCompare);
       return(false);
     }
@@ -4026,7 +4059,7 @@ Cheetah.Service = function()
     if(url.indexOf("~") == -1)
     {
       if(url.indexOf("/") == -1 && !ch.IsEmpty(folder))
-        return(folder + "/" + url);
+        return(this.RootFolder.EnsureEndsWith("/") + folder + "/" + url);
 
       return(url);
     }
@@ -4298,9 +4331,17 @@ _cheetah.IsCheetahExpression = function(text)
 /*****************************************************************************/
 _cheetah.RemoveExpressionDelimiters = function(text)
 {   
-  text = $.trim(text).substr(Cheetah.StartDelimiter.length);
+  text = $.trim(text);
+  
+  if(text.indexOf(Cheetah.StartDelimiter) == 0)
+  {
+    text = text.substr(Cheetah.StartDelimiter.length);
 
-  return text.substr(0, text.indexOf(Cheetah.EndDelimiter));
+    if(text.lastIndexOf(Cheetah.EndDelimiter) == (text.length - Cheetah.EndDelimiter.length))
+      text = text.substr(0, text.length - Cheetah.EndDelimiter.length);
+  }
+
+  return text;
 }
 
 /*****************************************************************************/

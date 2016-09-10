@@ -386,6 +386,17 @@ Array.prototype.Remove = function(fn)
 }
 
 /***************************************************************************************/
+Array.prototype.Add = function(obj, clone) 
+{
+  if(clone || clone == undefined)
+    obj = ch.Clone(obj);
+
+  this.push(obj);
+
+  return(this);
+}
+
+/***************************************************************************************/
 NodeList.prototype.FindMatching = function(fn) 
 {
   return(_findMatching(this, fn));
