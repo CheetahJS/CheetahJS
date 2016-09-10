@@ -446,6 +446,7 @@
       <button id="btnTest24_1" ch-click="MakeAudi">Audi</button>
       <button id="btnTest24_2" ch-click="MakeLandRover">Land Rover</button>
 
+      <h1>//MyModelPath//</h1>
     </div>
 
     <!-- ***************************************************************** -->
@@ -1625,7 +1626,7 @@
 
         <div>
           <ch-bind on="Errors">
-            //Message// <br />
+            //Message.replaceAll('G:\\PleskVhosts', '')// <br />
           </ch-bind>
         </div>
 
@@ -1790,6 +1791,62 @@
           </ch-bind>
 
         </div>
+      </div>
+    </div>
+
+    <div id="test73">
+      <div id="test73_inner">
+        <h3>Test73</h3>
+        <div><br /></div>
+
+        <div>
+          <input type="text" ch-bind="Filter" />
+          <ul>
+          <ch-bind on="Numbers.Where( n => Filter == '' || String(n.Value).indexOf(Filter) != -1)">
+
+            <li>
+              //Value//
+            </li>
+
+          </ch-bind>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+
+    <div id="test74">
+      <div id="test74_inner">
+        <h3>Test74</h3>
+        <div><br /></div>
+
+        <ch-action name="AddNewItem">
+          <ModelSetter name="LastItem" value="//LastItem + 1//">.</ModelSetter>
+          <ModelSetter name="NewItem.Id" value="//LastItem//">.</ModelSetter>
+          <Run>//TodoList.Add(NewItem)//</Run>
+          <ModelSetter name="NewItem.Value" value="">.</ModelSetter>
+        </ch-action>
+
+       <ch-action name="RemoveItem">
+          <Run expr="$$root.TodoList.Remove( (i) => i.Id == $$target.Id)"></Run>
+          <ModelSetter name="NewItem.Value" value="">.</ModelSetter>
+        </ch-action>
+
+        <h1>TODO</h1>
+        <ul>
+          <ch-bind on="TodoList">
+            <li>
+              <span>//Value//</span> <button ch-click="^RemoveItem">X</button>
+            </li>
+          </ch-bind>
+        </ul>
+
+        <input type="text" ch-bind="NewItem.Value" />
+        <button id="test74_btn" ch-click="^AddNewItem">Add #//TodoList.length + 1//</button>
+
+        <br/>
+        <br/>
+        <br/>
       </div>
     </div>
 
