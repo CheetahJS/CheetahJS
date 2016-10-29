@@ -173,11 +173,12 @@ _cheetah.ViewModel = function(vm, div)
   this.Deferred         = [];
   this.Async            = [];
   this.Watchers         = new _cheetah.WatcherList(this);
+  this.TemplateNode     = null;
 
   this.ModelID          = 1;
 
   this.Updated          = false;
-  this.SuppressUpdate = false;
+  this.SuppressUpdate   = false;
 
   /*****************************************************************************/
   // Constructor
@@ -235,22 +236,30 @@ _cheetah.ViewModel = function(vm, div)
   /*****************************************************************************/
   _cheetah.ViewModel.prototype.ProcessModel = function(model, fnDone)
   {
+    this.ActualViewModel.Model = model;
+
+    this.PreProcessModel();
+    model = this.ActualViewModel.Model;
+    
+    this.ReallyProcessModel(model, fnDone);
+  }
+
+  /*****************************************************************************/
+  _cheetah.ViewModel.prototype.ReallyProcessModel = function(model, fnDone)
+  {
     if(!CheckPrerequisites())
     {
       var self = this;
 
       setTimeout( function()
       {
-        self.ProcessModel(model, fnDone);
+        self.ReallyProcessModel(model, fnDone);
       }, 
       10);
       return;
     }
 
-    this.ActualViewModel.Model = model;
     this.ModelID = 1;
-
-    this.PreProcessModel();
 
     var wContainer = this.GetContainer();
 
@@ -261,9 +270,8 @@ _cheetah.ViewModel = function(vm, div)
       Cheetah.Builder.ShowElement(wContainer, false);
       Cheetah.Builder.InnerHTML(wContainer, "");
 
-      var templateNode = Cheetah.Builder.AppendChild(wContainer, "div");  
+      var templateNode = this.CreateTempNode();  
 
-      Cheetah.Builder.ShowElement(templateNode, false);
       Cheetah.Builder.InnerHTML(templateNode, this.ActualViewModel.Template);
 
       this.Watchers  = new _cheetah.WatcherList(this);
@@ -272,18 +280,41 @@ _cheetah.ViewModel = function(vm, div)
 
       this.RenderModel(templateNode, wContainer, this.ActualViewModel.Model);
 
-      Cheetah.Builder.RemoveChild(wContainer, templateNode);
+      Cheetah.Builder.RemoveFromParent(templateNode);
       wContainer.style.display = (display == "none" || display == "") ? "block" : display;
 
+      if(this.TemplateNode)
+        Cheetah.Builder.RemoveFromParent(this.TemplateNode);
+  
       this.ProcessDeferred();
-
-      this.PostProcessModel(model);
-
-      if(fnDone)
-        fnDone(model);
-
-      this.ProcessAsync();
+      this.ProcessAsync(model, fnDone);
     }
+  }
+
+  /*****************************************************************************/
+  _cheetah.ViewModel.prototype.CreateTempNode = function()
+  {
+    var node = Cheetah.Builder.AppendChild(Cheetah.Builder.FirstElementByName("body"), "div");
+    
+    Cheetah.Builder.ShowElement(node, false);
+
+    return node;
+  }
+
+  /*****************************************************************************/
+  _cheetah.ViewModel.prototype.CreateTemplate = function(html)
+  {  
+    if(!this.TemplateNode)
+      this.TemplateNode = this.CreateTempNode();
+
+    var templateNode = Cheetah.Builder.AppendChild(this.TemplateNode, "div");
+
+    Cheetah.Builder.InnerHTML(templateNode, html);
+
+    return templateNode;
+
+   // return new _cheetah.Template(this, templateNode);
+
   }
 
   /*****************************************************************************/
@@ -298,7 +329,7 @@ _cheetah.ViewModel = function(vm, div)
   } 
 
   /*****************************************************************************/
-  _cheetah.ViewModel.prototype.ProcessAsync = function()
+  _cheetah.ViewModel.prototype.ProcessAsync = function(model, fnDone)
   {
     if(!ch.IsEmpty(this.Async))
     {
@@ -312,8 +343,16 @@ _cheetah.ViewModel = function(vm, div)
         });
 
         self.Async = [];
+        self.ProcessAsync(model, fnDone);
       }, 
       20);
+    }
+    else
+    {
+      this.PostProcessModel(model);
+
+      if(fnDone)
+        fnDone(model);
     }
   }  
 
@@ -327,6 +366,7 @@ _cheetah.ViewModel = function(vm, div)
     ec.NewElement = wContainer;
 
     ec.Render(templateNode, model);
+    ec.PostProcess();
 
     return;
   }
@@ -501,7 +541,7 @@ _cheetah.ViewModel = function(vm, div)
   }
 
   /*****************************************************************************/
-  _cheetah.ViewModel.prototype.HandleClick = function(context, clickName, update)
+  _cheetah.ViewModel.prototype.HandleClick = function(context, clickName, update, callback)
   {
     var vm = this;
 
@@ -516,6 +556,7 @@ _cheetah.ViewModel = function(vm, div)
                {
                  evt.$model    = ch.Coalesce(evt.$model, context.Model);
                  evt.$position = context.Position;
+                 evt.$callback = callback;
                
                  if(!action.Run(evt) && update)
                    vm.UpdateView();
@@ -533,10 +574,14 @@ _cheetah.ViewModel = function(vm, div)
                evt.$model    = ch.Coalesce(evt.$model, context.Model);
                evt.$position = context.Position;
              
-               if(!avm[clickName](evt) && update)
-                 vm.UpdateView();
+               if(update)
+               {
+                 if(!avm[clickName](evt))
+                   vm.UpdateView();
 
-               return(true);
+                return(true);
+               }
+               return avm[clickName](evt);
              };
     }  
   }
@@ -870,7 +915,26 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
   }
 
   /*****************************************************************************/
-  _cheetah.Element.prototype.CreateChild = function(elem, vm)
+  _cheetah.Element.prototype.CheckTemplateTransform = function(elem, params)
+  {
+    var transform = _cheetah.Transforms[params.name];
+
+    if(transform && transform.UseTemplate)
+    {
+      params.name = "ch-call-template";
+      params.templateName = transform.UseTemplate;
+
+      var bind = ch.AttributeValue(elem, "ch-bind");
+
+      if(bind)
+        this.Builder.SetAttribute(elem, "bind", bind);
+            
+      this.Builder.SetAttribute(elem, "name", transform.UseTemplate);
+    }
+  }
+
+  /*****************************************************************************/
+  _cheetah.Element.prototype.CreateChild = function(elem, vm, insert, parent)
   {
     var name = elem.localName;
 
@@ -895,16 +959,20 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
 
     this.ProcessLastIf();
 
+    var params = {name: name, templateName: null };
+
+    this.CheckTemplateTransform(elem, params);
+
     try
     {
-      switch(name)
+      switch(params.name)
       {
         case "ch-bind":
           return new _cheetah.BindElement(vm, this, elem, this.Model);
 
         case "ch-if":
           this.LastIf = new _cheetah.IfElement(vm, this, elem, this.Model);
-          return null;
+          return this.LastIf;
 
         case "ch-action":
           this.CreateAction(elem);
@@ -914,13 +982,19 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
           new _cheetah.Variable(vm, this, elem, this.Model);
           return null;
 
+        case "ch-call-template":
+          return new _cheetah.CallTemplate(vm, this, elem, this.Model, params.templateName);
+
+        case "ch-template-contents":
+          return new _cheetah.TemplateContents(vm, this, elem, this.Model);
+          
         default:
           return new _cheetah.DOMElement(vm, this, elem, this.Model);
       }
     }
     catch(e)
     {
-      Cheetah.Logger.Error(e.description);
+      Cheetah.Logger.Error("Error creating child element [" + name + "]: " + e.description);
       return null;
     }
   }
@@ -1079,6 +1153,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
    *****************************************************************************/
   _cheetah.Element.prototype.GetChildrenRenderElement = function(insert)
   {
+// ??? not working if cheetah element and previous was ch-if
     if(this.NewElement)
     {
       if(this.NewElement.childNodes.length > 0)
@@ -1103,9 +1178,6 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
     for(var i = this.Index-1; i >= 0; --i)
     {
       var sibling = this.ParentContext.Children[i];
-
-      if(sibling.IsRenderLess)
-        continue;
 
       if(sibling.NewElement)
       {
@@ -1170,11 +1242,13 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
         if(ec == null)
           return;
 
-        ec.Index = index;
+        ec.Index = index++;
+
+        if(name == "ch-if")
+          return;
+        
         ec.ProcessElement(insert, parent);
         ec.PostProcess();
-
-        ++index;
 
         if(insert)
         {
@@ -1201,11 +1275,27 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
       this.AddAction(action);
     else
     {
-      var parentName = this.Name;
+      var parentName = this.Transform.NewName;
       var trigger    = action.Trigger;
 
       if(ch.IsEmpty(trigger))
-        trigger = (parentName == "button" || parentName == "a") ? "click" : "mouseup";
+      {
+        switch(parentName)
+        {
+          case "button":
+          case "a":
+           trigger = "click";
+           break;
+
+          case "select":
+           trigger = "change";
+           break;
+
+          default:
+            trigger = "mouseup";
+            break;
+        }
+      }
 
       if(trigger.indexOf("visibility") == -1 && trigger.indexOf("visible") == -1)
       {
@@ -1531,6 +1621,89 @@ _cheetah.VariableBuilder = function(context, name)
   }
 
 /*****************************************************************************/
+_cheetah.Template = function(vm, elem)
+{
+  _cheetah.CheetahElement.call(this, vm, null, elem);
+
+  this.IsCheetahElement = true;
+}
+
+  _cheetah.Template.inherits(_cheetah.CheetahElement);
+
+/*****************************************************************************/
+_cheetah.CallTemplate = function(vm, parentElement, elem, model, name)
+{
+  _cheetah.CheetahElement.call(this, vm, parentElement, elem, model);
+
+  this.IsCheetahElement = true;
+  this.ContentElement = elem;
+
+  if(!name)
+    name = ch.AttributeValue(elem, "name", true);
+
+  if(!name)
+  {
+    Cheetah.Logger.Error("Missing template name");
+    return;
+  }
+
+  name = ch.Evaluate(this.EvaluateText(vm, name));
+
+  var templateRef = _cheetah.Templates[name];
+
+  if(!templateRef)
+  {
+    Cheetah.Logger.Error("Undefined template: " + name);
+    return;
+  }
+
+  this.Element = templateRef.GetTemplate(vm);
+
+  var self = this;
+
+  elem.attributes.ForEach( function(attr)
+  {
+    if(attr.localName != "name")
+    {
+      var w = new _cheetah.VariableWatcher(vm, self, attr.localName, attr.value)
+          
+      if(self.Watch)
+        self.AddWatcher(vm, w, _cheetah.Priority.High); 
+
+      w.Eval(vm, true);
+    }
+  });
+}
+
+  _cheetah.CallTemplate.inherits(_cheetah.CheetahElement);
+
+/*****************************************************************************/
+_cheetah.TemplateContents = function(vm, parentElement, elem, model)
+{
+  _cheetah.CheetahElement.call(this, vm, parentElement, elem, model);
+
+  this.IsCheetahElement = true;
+
+  var parent = this.ParentContext;
+
+  while(ch.IsValid(parent))
+  {
+    if(parent.ContentElement)
+    {
+      this.Element = parent.ContentElement;
+      break;
+    }
+
+    parent = parent.ParentContext;
+  }
+
+  if(!ch.IsValid(parent))
+    Cheetah.Logger.Error("'ch-template-contents' element not found within a 'ch-template' element");
+}
+
+  _cheetah.TemplateContents.inherits(_cheetah.CheetahElement);
+
+/*****************************************************************************/
 /*****************************************************************************/
 _cheetah.BindElement = function(vm, parentElement, element, model)
 {
@@ -1574,10 +1747,19 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
   /*****************************************************************************/
   _cheetah.BindElement.prototype.EvaluateBind = function()
   {    
+    if(!this.Bind)
+    {
+      //Cheetah.Logger.Error("Bind value is null");
+      return null;
+    }
+
     if(this.Bind.Eval)
       return this.Bind.Eval(this, this.Model);
 
-    this.Bind.$$path = this.BindPath;
+    this.Bind = ch.GetModelValue(this.Model, this.BindPath, this);
+
+    if(this.Bind)
+      this.Bind.$$path = this.BindPath;
 
     return this.Bind;
   }
@@ -1759,34 +1941,24 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
   /*****************************************************************************/
   _cheetah.DOMElement.prototype.CheckTransform = function()
   {
-    var transform = null;
+    var transform = _cheetah.Transforms[this.Name];
 
-    // See if we're in a transform and see if this element should be a child transform of that
-    if(ch.IsValid(this.ParentContext.InTransform))
-      if(ch.IsValid(this.ParentContext.InTransform.ChildTransforms))
-        transform = this.ParentContext.InTransform.ChildTransforms[this.Name];
-
-    if(!ch.IsValid(transform))
+    if(transform && transform.RequiredParent)
     {
-      transform = _cheetah.Transforms[this.Name];
+      var parent = this.GetNonCheetahAncestor();
+      var all    = transform.RequiredParent.split(",");
 
-      if(transform && transform.RequiredParent)
+      if(!all.IfAny( function(item)
       {
-        var parent = this.GetNonCheetahAncestor();
-        var all    = transform.RequiredParent.split(",");
-
-        if(!all.IfAny( function(item)
-        {
-          return item == parent.Name;
-        }))
-          Cheetah.Logger.Error(transform.Name + " must be a child of " + transform.RequiredParent + " (ignoring Cheetah elements)");
-      }
+        return item == parent.Name;
+      }))
+        Cheetah.Logger.Error(transform.Name + " must be a child of " + transform.RequiredParent + " (ignoring Cheetah elements)");
     }
 
     if(!ch.IsValid(transform))
     {
       transform = new IdentityTransform(this.Name);
-      this.InTransform = this.ParentContext.InTransform;
+      this.InTransform = this.ParentContext ? this.ParentContext.InTransform : false;
     }
     else
     {
@@ -1822,20 +1994,6 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
         return item == self.Name;
       }))
         Cheetah.Logger.Error(this.Name + " is not allowed as a child of " + this.ParentContext.InTransform.Name + " (ignoring Cheetah elements)");
-    }
-
-    if(!ch.IsEmpty(transform.UseTemplate))
-    {
-      var bind = ch.AttributeValue(this.Element, "ch-bind");
-
-      if(ch.IsValid(bind))
-        this.Builder.SetAttribute(this.Element, "bind", bind);
-            
-      this.Builder.SetAttribute(this.Element, "name", transform.UseTemplate);
-      this.Name = "ch-call-template";
-      this.IsCheetahElement = true;
-      transform = new IdentityTransform(transform.UseTemplate);
-      this.InTransform = this.ParentContext.InTransform;
     }
 
     this.Transform = transform;
@@ -1930,67 +2088,6 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
         return(true);
       }
 
-      case "call-template":
-      {
-        var name = ch.AttributeValue(this.Element, "name", true);
-
-        if(name == null)
-          return(true);
-
-        this.RenderElement = false;
-        var template = _cheetah.Templates[name];
-
-        if(!ch.IsValid(template))
-        {
-          Cheetah.Logger.Error("Undefined template called: " + name);
-          return(true);
-        }
-
-        var self = this;
-
-        this.Element.attributes.ForEach( function(attr)
-        {
-          if(attr.localName != "name")
-          {
-            var w = new _cheetah.VariableWatcher(vm, self.ParentContext, attr.localName, attr.value)
-          
-            if(self.Watch)
-              self.AddWatcher(vm, w, _cheetah.Priority.High); 
-
-            w.Eval(vm, true);
-          }
-        });
-
-        this.Contents = this.Element.innerHTML;
-        this.Element.innerHTML = template;
-        break;
-      }
-
-      case "template-contents":
-      {
-        this.RenderElement = false;
-
-        var parent = this.ParentContext;
-
-        while(ch.IsValid(parent))
-        {
-          if(parent.Name == "ch-call-template")
-          {
-            this.Element.innerHTML = parent.Contents;
-            break;
-          }
-          parent = parent.ParentContext;
-        }
-
-        if(!ch.IsValid(parent))
-        {
-          Cheetah.Logger.Error("'ch-template-contents' element not found within a 'ch-template' element");
-          return(true);
-        }
-
-        break;
-      }
-
       default:
         Cheetah.Logger.Warning("Unknown Cheetah element: '" + this.Name + "'");
         return(true);
@@ -2022,7 +2119,7 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
           switch(name.substr(3))
           {
             case "bind":
-              this.Bind = attr.value;
+              this.Bind = ch.Evaluate(this.EvaluateText(vm, attr.value));
               break;
 
             case "async":
@@ -2032,6 +2129,24 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
             case "preserve-space":
               this.PreserveSpace = attr.value.toLowerCase() == "true";
               break;
+
+            case "format":
+              this.Format = this.EvaluateText(vm, attr.value);
+              break;
+
+            case "deformat":
+              this.Deformat = this.EvaluateText(vm, attr.value);
+              break;
+
+            case "filter":
+            {
+              this.Filter = attr.value;
+
+              if(this.Filter)
+                this.Filter = new RegExp(this.Filter.replaceAll("\\\\", "\\"));
+
+              break;
+            }
 
             case "watch":
               // Taken care of in constructor
@@ -2261,82 +2376,6 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
     return;
   }
 
-  /*****************************************************************************/
-  /*****************************************************************************/
-  function IdentityTransform(name)
-  {
-    this.Name       = name;
-    this.NewName    = name;
-    this.IsEditable = name == "input" || name == "select" || name == "textarea";
-    this.IsIdentity = true;
-    this.IgnoreText = false;
-
-    /*****************************************************************************/
-    this.GetValue = function(elem)
-    {
-      return $(elem).val();
-    }
-
-    /*****************************************************************************/
-    this.SetValue = function(elem, val)
-    {
-      $(elem).val(val);
-    }
-
-    /*****************************************************************************/
-    this.OnBind = function(elem, bindExpr, onchange)
-    {
-      var evt = "";
-
-      switch(elem.localName)
-      {
-        case "select":   
-          evt = "change"; 
-          break;
-
-        case "textarea": 
-          evt = "keyup";
-          break;
-
-        case "input":
-        {
-          switch(elem.type)
-          {
-            case "text":  
-            case "password":  
-            case "email":  
-            case "date":  
-            case "number":  
-            case "url":  
-              evt = "keyup"; 
-              break;
-
-            default:      
-              evt = "change"; 
-              break;
-          }
-        }
-      }
-
-      var bindings = bindExpr.split(":");
-
-      if(bindings.length == 2)
-        evt = $.trim(bindings[1]);
-
-      if(evt == "")
-        throw "No known event type for this element";
-
-      var self = this;
-
-      $(elem).on(evt, function(evt) 
-      { 
-        var val = self.GetValue(ch.EventTarget(evt));
-
-        onchange(val);
-      });
-    }
-  }
-
 }(_cheetah, document);
 
 /*****************************************************************************/
@@ -2363,7 +2402,7 @@ _cheetah.Action = function(vm, context, element, parent)
   this.OnFail          = null;
 
   /*****************************************************************************/
-  this.Run = function(evt)
+  this.Run = function(evt, suppressUpdate)
   {
     try
     {
@@ -2380,13 +2419,17 @@ _cheetah.Action = function(vm, context, element, parent)
         false
       )
 
-      if(update)
+      if(update && !suppressUpdate)
         this.ViewModel.UpdateView();
+      
+      return update;
     }
     catch(e)
     {
       Cheetah.Logger.Error(e.description);
     }
+
+    return false;
   }
 
   /*****************************************************************************/
@@ -2394,18 +2437,28 @@ _cheetah.Action = function(vm, context, element, parent)
   {
     var self = this;
 
-    element.childNodes.ForEach(function(childNode)
+    try
     {
-     self.HandleStep(context, childNode);
-    });
+      element.childNodes.ForEach(function(childNode)
+      {
+       self.HandleStep(context, childNode);
+      });
+    }
+    catch(e)
+    {
+      Cheetah.Logger.Error("Error creating action [" + this.Name + "]: " + e.description);
+    }
   }
 }
 
   /*****************************************************************************/
   _cheetah.Action.prototype.EvalExpression = function(evt, context, value)
   {  
-    if(value.indexOf("$$") == -1 && !_cheetah.IsCheetahExpression(value))
+    if(!value)
       return value;
+
+    if(value.indexOf("$$") == -1 && !_cheetah.IsCheetahExpression(value))
+      return ch.Convert(value);
 
     var vm    = this.ViewModel;
     var model = ch.Coalesce(evt.$model, context.Model);
@@ -2484,6 +2537,8 @@ _cheetah.Action = function(vm, context, element, parent)
       _cheetah.LogError(6);
       return;
     }
+
+    name = ch.Evaluate(context.EvaluateText(context.ViewModel, name));
 
     this.EvalSetter(action, context, childNode, function(evt, val)
     {
@@ -2573,12 +2628,19 @@ _cheetah.Action = function(vm, context, element, parent)
   }
 
   /*****************************************************************************/
+  function EvalAttribute(context, childNode, attrName)
+  {
+    return context.EvaluateText(context.ViewModel, ch.AttributeValue(childNode, attrName))
+  }
+
+  /*****************************************************************************/
   _cheetah.Action.prototype.EvalVisibilitySetter = function(context, childNode)
   {
     var show  = ch.AttributeValue(childNode, "show");
     var hide  = ch.AttributeValue(childNode, "hide");
     var sel   = "";
     var bShow = true;
+    var self  = this;
 
     if(ch.IsEmpty(show) && ch.IsEmpty(hide))
     {
@@ -2591,15 +2653,15 @@ _cheetah.Action = function(vm, context, element, parent)
     {
       if(ch.IsEmpty(hide) && ch.IsEmpty(show))
       {
-        _cheetah.ShowElement(ch.SelectTarget(evt, sel), bShow);
+        _cheetah.ShowElement(ch.SelectTarget(evt, self.EvalExpression(evt, context, sel)), bShow);
       }
       else
       {
         if(!ch.IsEmpty(hide))
-          _cheetah.ShowElement(ch.SelectTarget(evt, hide), false);
+          _cheetah.ShowElement(ch.SelectTarget(evt, self.EvalExpression(evt, context, hide)), false);
 
         if(!ch.IsEmpty(show))
-          _cheetah.ShowElement(ch.SelectTarget(evt, show), true);
+          _cheetah.ShowElement(ch.SelectTarget(evt, self.EvalExpression(evt, context, show)), true);
       }
 
       return false;
@@ -2621,10 +2683,14 @@ _cheetah.Action = function(vm, context, element, parent)
 
       this.SetActionStep(context, childNode, function(evt) 
       { 
+        var update = false;
+
         vm[action](param, function()
         {
-          childAction.Run(evt);
+          update = childAction.Run(evt, true);
         });
+
+        return update;
       });
     }
   }
@@ -2715,49 +2781,82 @@ _cheetah.Action = function(vm, context, element, parent)
         break;
 
       case "remove":
-      {
         this.EvalSelectSetter(self, context, childNode, false, function($q, name, val)
         {
           $q.remove();
         });
-
         break;
-      }
 
       case "reloadmodel":
-      {
         this.SetActionStep(context, childNode, function(evt) 
         {
           vm.SuppressUpdate = true;
           vm.ActualViewModel.LoadModel();
           return false;
         });
-
         break;
-      }
 
       case "call":
       {
-        var fnName = $.trim(childNode.innerHTML);
+        var fnName = ch.AttributeValue(childNode, "function");
+        var isAttribute = true;
+        var isAction = false;
+
+        if(!fnName)
+        {
+          fnName = ch.AttributeValue(childNode, "action");
+
+          if(fnName)
+          {
+            fnName = "^" + fnName.replace("^", "");
+            isAction = true;
+          }
+          else
+          {
+            fnName = $.trim(childNode.innerHTML);
+            isAttribute = false;
+          }
+        }
 
         fnName = ch.Evaluate(context.EvaluateText(this.ViewModel, fnName));
         
-        var fn = this.ViewModel.HandleClick(context, fnName, false);
+        var childAction = isAttribute ? this.CreateChild(context, childNode) : null; 
+        var fn          = this.ViewModel.HandleClick(context, fnName, false, childAction);
 
         this.SetActionStep(context, childNode, function(evt) 
         {
-          fn(evt);            
+          if(fn(evt) && !isAction && childAction)
+          {
+            evt.$callback = null;
+            return childAction.Run(evt, true);
+          }
+          return false;
         });
 
         break;
       }
 
+      case "callback":
+      {      
+        this.SetActionStep(context, childNode, function(evt) 
+        {
+          if(evt.$callback)   
+          { 
+            var callback = evt.$callback;
+            evt.$callback = null;
+            return callback.Run(evt, true);
+          }
+          return false;
+        });
+        break;
+      }
+
       case "run":
       {
-        var expr = $.trim(childNode.innerHTML);
+        var expr = ch.AttributeValue(childNode, "expr");
 
         if(ch.IsEmpty(expr))
-          expr = ch.AttributeValue(childNode, "expr");
+          expr = $.trim(childNode.innerHTML);
 
         expr = _cheetah.RemoveExpressionDelimiters(expr);
         expr = this.ViewModel.CreateExpression(expr);
@@ -2768,7 +2867,9 @@ _cheetah.Action = function(vm, context, element, parent)
 
           inject["$$target"] = evt.$model;
 
-          expr.Eval(context, evt.$model, inject);           
+          expr.Eval(context, evt.$model, inject);   
+          
+          return true;
         });
 
         break;
@@ -2852,10 +2953,8 @@ _cheetah.Action = function(vm, context, element, parent)
 
       case "delay":
       {
-        var amt = ch.AttributeValue(childNode, "for");
+        var amt = EvalAttribute(context, childNode, "for");
         var childAction = this.CreateChild(context, childNode);
-
-        amt = context.EvaluateText(this.ViewModel, amt);
 
         this.SetActionStep(context, childNode, function(evt) 
         {
@@ -2881,11 +2980,11 @@ _cheetah.Action = function(vm, context, element, parent)
   }
 
   /*****************************************************************************/
-  _cheetah.Action.prototype.CreateChild = function(context, childNode)
+  _cheetah.Action.prototype.CreateChild = function(context, elem)
   {    
-    if(!ch.IsEmpty(childNode.childNodes))
+    if(!ch.IsEmpty(elem.childNodes))
     {
-      var childAction = new _cheetah.Action(this.ViewModel, context, childNode, this);
+      var childAction = new _cheetah.Action(this.ViewModel, context, elem, this);
 
       if(childAction.Steps.length != 0)
         return childAction;
@@ -3270,49 +3369,16 @@ _cheetah.Property = function(prop, model)
   /*****************************************************************************/
   this.SetValue = function(val)
   {  
-    if(typeof _prop == "string")
-      _model[_prop] = val;
-    else
-    {
-      var n = _prop.length;
-      
-      for(var i = 0; i < (n-1); ++i)
-        _model = model[_prop[i]];
-
-      _model[_prop[n-1]] = val;
-    }
+    ch.SetModelValue(_model, _prop, val);
   }
 
   /*****************************************************************************/
   this.GetValue = function() 
   {
-    try
-    {
-      if(typeof _prop == "string")
-      {
-        if(_prop == "__expr__")
-          return + _prop;
+    if(_prop == "__expr__")
+        return _prop;
 
-        return(_model[_prop]);
-      }
-
-      var n = _prop.length;
-      var model = _model;
-
-      for(var i = 0; i < n; ++i)
-      {
-        model = model[_prop[i]];
-
-        if(!model)
-          return null;
-      }
-
-      return(model);
-    }
-    catch(e)
-    {
-      Cheetah.Logger.Error(e.description);
-    }
+    return ch.GetModelValue(_model, _prop);
   }
 }
 
@@ -3331,10 +3397,58 @@ _cheetah.PropertyWatcher = function(vm, context)
     if(!_updating)
     {
       _updating = true;
+
+      if(context.Deformat)
+        newVal = ch.Evaluate(context.Deformat, null, {$$value: newVal});
+
       _bind.SetValue(newVal);
       this.ViewModel.UpdateView();
       _updating = false;
     }
+  }
+
+  /*****************************************************************************/
+  this.OnBlur = function()
+  {
+    if(!_updating)
+    {
+      _updating = true;
+
+       var newVal = Cheetah.Builder.GetValue(context.NewElement);
+
+       newVal = ch.Evaluate(context.Format, null, {$$value: newVal});
+
+      Cheetah.Builder.SetValue(context.NewElement, newVal);
+      _updating = false;
+    }
+  }
+
+  /*****************************************************************************/
+  this.OnKeyPress = function(evt)
+  {
+    if(context.Filter.test(String.fromCharCode(event.keyCode)))
+      return event.returnValue = true;
+
+    return event.returnValue = false;
+  }
+
+  /*****************************************************************************/
+  this.OnPaste = function(evt)
+  {
+    var txt = clipboardData.getData("text");
+
+    if(txt)
+    {
+      var len = txt.length;
+
+      for(var i = 0; i < len; ++i)
+      {
+        if(!context.Filter.test(txt[i]))
+          return event.returnValue = false;
+      }
+    }
+
+    return event.returnValue = true;
   }
 
   /*****************************************************************************/
@@ -3349,7 +3463,15 @@ _cheetah.PropertyWatcher = function(vm, context)
   {
     context.TransformMethod("SetValue", function(transform)
     {
-      transform.SetValue(context.NewElement, _bind.GetValue());
+      var val = _bind.GetValue();
+
+      if(context.Format)
+        val = ch.Evaluate(context.Format, null, {$$value: val});
+
+      if(!val)
+        val = "";
+
+      transform.SetValue(context.NewElement, val);
     });
   }
 
@@ -3372,6 +3494,30 @@ _cheetah.PropertyWatcher = function(vm, context)
         self.OnChange(newVal);
       });
     });
+
+    if(context.Transform.NewName == "input" || context.Transform.NewName == "textarea")
+    {
+      if(context.Format)
+      {
+        $(context.NewElement).on("blur", function()
+        {
+          self.OnBlur();
+        });
+      }
+
+      if(context.Filter)
+      {
+        $(context.NewElement).on("keypress", function(evt)
+        {
+          return self.OnKeyPress(evt);
+        });
+
+        $(context.NewElement).on("paste", function(evt)
+        {
+          return self.OnPaste(evt);
+        });
+      }
+    }
   }
 }
 
@@ -3534,7 +3680,7 @@ _cheetah.BindWatcher = function(context)
 
   var _vm        = context.ViewModel;
   var _rendered  = false;
-  var _model     = null;
+  var _model     = CloneModel(context.EvaluateBind());
 
   this.BaseReRender = this.ReRender;
   this.BaseModelChanged = this.ModelChanged;
@@ -3545,38 +3691,99 @@ _cheetah.BindWatcher = function(context)
     _rendered = false;
 
     var newModel = {};
+    var oldModel = _model;
 
-    _model = this.Context.EvaluateBind();
+    var checkModel = this.Context.EvaluateBind();
 
-    if(this.BaseModelChanged(_model, newModel))
+    if(checkModel)
+    {
+      checkModel.$$parent = this.Context.Model;
+
+      if(oldModel)
+        checkModel.$$path = oldModel.$$path;
+
+      if(Array.isArray(checkModel))
+      {
+        if(!Array.isArray(oldModel) || checkModel.length != oldModel.length)
+        {
+          _model = CloneModel(checkModel);
+          return true;
+        }
+      }
+    }
+
+    if(this.BaseModelChanged(checkModel, newModel))
+    {
+      _model = CloneModel(checkModel);
       return(true);
+    }
 
     if(_rendered)
       return(false);
 
-    _model = newModel.Model;
+    checkModel = newModel.Model;
 
     var index = 0;
     var changed = false;
 
     // Sort the list if requested
     if(ch.IsValid(this.Context.Sort))
-      ch.Sort(_model, ch.Evaluate(this.Context.Sort));
+      ch.Sort(checkModel, ch.Evaluate(this.Context.Sort));
 
     // See if any new items in list, removed items or reordered items
-    _model.ForEach( function(item)
+    checkModel.ForEach( function(item)
     {
-      if(!ch.IsValid(item.$$index) || item.$$index != index)
+      if(!ch.IsValid(item.$$index) || item.$$index != index++)
       {
         changed = true;
-        item.$$index = index;
+        return false;
       }
 
-      item.$$parent = _model;
-      ++index;
-    });
+      return true;
+    }, 
+    true);
+
+    if(changed)
+      _model = CloneModel(checkModel);
 
     return changed;
+  }
+
+  /*****************************************************************************/
+  function CloneModel(model, oldModel)
+  {  
+    var newModel = ch.ShallowClone(model);
+    FixArray(newModel, oldModel ? oldModel : model);
+
+    return newModel;
+  }
+  
+  /*****************************************************************************/
+  function FixArray(arr, copy)
+  {
+    if(Array.isArray(arr))
+    {
+      var index = 0;
+  
+      arr.ForEach( function(item)
+      {
+        item.$$parent = arr;
+        item.$$index = index++;
+      });
+    }
+
+    if(copy)
+      CopyCheetahAttributes(arr, copy)
+  }
+
+
+  /*****************************************************************************/
+  function CopyCheetahAttributes(obj1, obj2)
+  {
+    obj1.$$id     = obj2.$$id;
+    obj1.$$index  = obj2.$$index;
+    obj1.$$parent = obj2.$$parent;
+    obj1.$$path   = obj2.$$path;
   }
 
   /*****************************************************************************/
@@ -4009,6 +4216,89 @@ _cheetah.VisibilityWatcher = function(vm, context, cond)
   }
 }
 
+  /*****************************************************************************/
+  /*****************************************************************************/
+  function IdentityTransform(name)
+  {
+    Cheetah.Transform.call(this);
+
+    this.Name       = name;
+    this.NewName    = name;
+    this.IsEditable = name == "input" || name == "select" || name == "textarea";
+    this.IsIdentity = true;
+    this.IgnoreText = false;
+  }
+
+/*****************************************************************************/
+/*****************************************************************************/
+Cheetah.Transform = function()
+{
+  /*****************************************************************************/
+  this.GetValue = function(elem)
+  {
+    return Cheetah.Builder.GetValue(elem);
+  }
+
+  /*****************************************************************************/
+  this.SetValue = function(elem, val)
+  {
+    Cheetah.Builder.SetValue(elem, val);
+  }
+
+  /*****************************************************************************/
+  this.OnBind = function(elem, bindExpr, onchange)
+  {
+    var evt  = "";
+
+    switch(this.NewName)
+    {
+      case "select":   
+        evt = "change"; 
+        break;
+
+      case "textarea": 
+        evt = "keyup";
+        break;
+
+      case "input":
+      {
+        switch(elem.type)
+        {
+          case "text":  
+          case "password":  
+          case "email":  
+          case "date":  
+          case "number":  
+          case "url":  
+            evt = "keyup"; 
+            break;
+
+          default:      
+            evt = "change"; 
+            break;
+        }
+      }
+    }
+
+    var bindings = bindExpr.split(":");
+
+    if(bindings.length == 2)
+      evt = $.trim(bindings[1]);
+
+    if(evt == "")
+      throw "No known event type for this element";
+
+    var self = this;
+
+    $(elem).on(evt, function(evt) 
+    { 
+      var val = self.GetValue(ch.EventTarget(evt));
+
+      onchange(val);
+    });
+  }
+}
+
 /*****************************************************************************/
 /*** Begin Cheetah.Service                                                 ***/
 /*****************************************************************************/  
@@ -4059,7 +4349,7 @@ Cheetah.Service = function()
     if(url.indexOf("~") == -1)
     {
       if(url.indexOf("/") == -1 && !ch.IsEmpty(folder))
-        return(this.RootFolder.EnsureEndsWith("/") + folder + "/" + url);
+        return(this.RootFolder.EnsureEndsWith("/") + (folder ? folder + "/" : "") + url);
 
       return(url);
     }
@@ -4146,6 +4436,9 @@ Cheetah.Service = function()
                 (
                   function(jqXHR, textStatus, errorThrown)
                   {
+                    if(errorThrown == "Not Found")
+                      errorThrown += ": " + url;
+
                     self.OnError(errorThrown, err_callback);
                   }
                 );
@@ -4257,7 +4550,7 @@ _cheetah.LoadFileTask = function(svc, path)
   {
     var self = this;
 
-    _svc.Get( _path, 
+    _svc.Get( _svc.NormalizeUrl(_path), 
               function(data)
               {
                 self.Html = data;
@@ -4345,6 +4638,23 @@ _cheetah.RemoveExpressionDelimiters = function(text)
 }
 
 /*****************************************************************************/
+/*****************************************************************************/
+_cheetah.TemplateReference = function(html)
+{
+  this.Html = html;
+  this.Template = null;
+}
+  
+  /*****************************************************************************/
+  _cheetah.TemplateReference.prototype.GetTemplate = function(vm)
+  {
+    if(!this.Template)
+      this.Template = vm.CreateTemplate(this.Html);
+
+    return this.Template;
+  }
+  
+/*****************************************************************************/
 var LoadTemplates = new function()
 { 
   var _includes = [];
@@ -4368,7 +4678,7 @@ var LoadTemplates = new function()
         {
           _cheetah.RequireAttribute(item, "name", "Missing template name", function(name)
           {
-            _cheetah.Templates[name] = Cheetah.Builder.InnerHTML(item);
+            _cheetah.Templates[name] = new _cheetah.TemplateReference(Cheetah.Builder.InnerHTML(item));
           });
         },
         true
@@ -4424,7 +4734,7 @@ var LoadTemplates = new function()
     {
       var svc      = new Cheetah.Service();
       var self     = this;    
-      var taskList = new Cheetah.TaskList(99999);
+      var taskList = new Cheetah.TaskList(999999);
       var tasks    = [];
 
       _includes.ForEach( function(path)

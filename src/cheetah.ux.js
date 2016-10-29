@@ -87,8 +87,11 @@ var TableHeaderCellTransform = new function()
 /***************************************************************************************/
 var SelectTransform = new function()
 {
+  Cheetah.Transform.call(this);
+
   this.Name = "cx:select";
   this.NewName = "select";
+  this.IsEditable = true;
 
   Cheetah.RegisterTransform(this);
 }

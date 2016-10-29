@@ -20,6 +20,8 @@
   var _cheetah = {
                     KnownLibraries: {Math: true, jQuery: true, ch: true, String: true, Number: true},
                     TransformOperators: {and: "&&", or: "||"},
+                    EncodedTransformOperators: ["&gt;", "&lt;", "&amp;", "&quot;", "&apos;"],
+                    EncodedTransformTo: [">", "<", "&", "\"", "'"],
                     Operators: ["[", "]", "*", "/", "++", "--", "+=", "-=", "*=", "/=", "+", "-", "%", "<", "<=", ">", ">=", "==", "===", "!=", "!==", "!", "||", "&&", "?", ":", "(", ")", "~", "^", ">>", "<<", ",", "=>", "and", "or", "="],
                     LiteralValues: {xNaN: true, xundefined: true, xnull: true, xtrue: true, xfalse: true},
                     dOperators: null
@@ -91,7 +93,7 @@
         _cheetah.dOperators = _cheetah.Operators.ToDictionary();
 
       var c    = new _cheetah.Compiler();
-      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1});
+      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1});
 
       if(expr.indexOf("return") == 0)
         _fn = new Function("__vm", "__model", "__injected", "__ec", expr);
@@ -147,14 +149,20 @@
     }
 
     /*****************************************************************************/
+    var TokenType = {
+                      Text:        1,
+                      Literal:     2,
+                      Number:      3,
+                      Punctuation: 4 
+                    };
+
+    /*****************************************************************************/
     _cheetah.Compiler.prototype.Compile = function(expression, modelTokens, varTokens, injected)
     {
-      var numRegex2       = /^\s*(\+|-)?((\d+(\.\d+)?)|(\.\d+))\s*$/;
-      var numRegex        = /^[-+]?[0-9]+$/;
-      var puncRegex       = /[{}:;\(\)?\]\[+,]/;
-      var opRegex         = /[!=<>\|&/\*\^\+\~\?\:]/;
-      var n               = expression.length;
-      var prev            = null;
+      var puncRegex = /[{}:;\(\)?\]\[+,]/;
+      var opRegex   = /[!=<>\|&/\*\^\+\~\?\:]/;
+      var n         = expression.length;
+      var prev      = null;
 
       for(var i = 0; i < n; ++i)
       {
@@ -163,7 +171,7 @@
         // String literals
         if(ch == '\'' && prev != '\\')
         {
-          if(this._tokenType == 2)
+          if(this._tokenType == TokenType.Literal)
           {
             // End of literal
             this.PushToken(this._token + ch, true);
@@ -174,11 +182,11 @@
             this.PushToken();
 
             // Beginning of literal
-            this._tokenType = 2;
+            this._tokenType = TokenType.Literal;
             this._token = String(ch);
           }
         }
-        else if(this._tokenType == 2)
+        else if(this._tokenType == TokenType.Literal)
         {
           this._token += ch;
         }
@@ -189,25 +197,46 @@
         // Numeric literals
         else if(IsNumberChar(ch))
         {
-          if(this._tokenType == 3 || this._tokenType == 1)
+          if(this._tokenType == TokenType.Number || this._tokenType == TokenType.Text)
             this._token += ch;
           else
           {
             this.PushToken();
             this._token = String(ch);
-            this._tokenType = 3;
+            this._tokenType = TokenType.Number;
           }
         }
         // Valid punctuation
         else if(opRegex.test(ch))
         {
-          if(this._tokenType == 4)
+          if(ch == '&')
+          {
+            var c = 0;
+
+            _cheetah.EncodedTransformOperators.ForEach( function(item)
+            {
+              var test = expression.substr(i, item.length);
+
+              if(test == item)
+              {
+                i += item.length - 1;
+                ch = _cheetah.EncodedTransformTo[c];
+                return false; // to stop
+              }
+
+              ++c;
+              return true; // to continue
+            }, 
+            true);
+          }
+
+          if(this._tokenType == TokenType.Punctuation)
             this._token += ch;
           else
           {
             this.PushToken();
             this._token = String(ch);
-            this._tokenType = 4;
+            this._tokenType = TokenType.Punctuation;
           }
         }
         else if(puncRegex.test(ch))
@@ -218,7 +247,7 @@
         else
         {
           this._token += String(ch);
-          this._tokenType = 1;
+          this._tokenType = TokenType.Text;
         }
 
         prev = ch;

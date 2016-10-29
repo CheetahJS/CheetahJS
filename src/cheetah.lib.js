@@ -284,19 +284,22 @@ Cheetah.Task = function(callback)
   {
     var self = this;
 
-    try
+    if(_taskFunction)
     {
-      _taskFunction(function()
-                     {
-                      if(ch.IsValid(self.OnComplete))
-                        self.OnComplete();
+      try
+      {
+        _taskFunction(function()
+                       {
+                        if(ch.IsValid(self.OnComplete))
+                          self.OnComplete();
                      
-                      self.Complete = true;
-                     });
-    }
-    catch(e)
-    {
-      alert(e.description);
+                        self.Complete = true;
+                       });
+      }
+      catch(e)
+      {
+        alert(e.description);
+      }
     }
   }
 }
@@ -305,10 +308,10 @@ Cheetah.Task = function(callback)
 /***************************************************************************************/
 Cheetah.TaskList = function(max)
 {
-  var _tasks      = [];
-  var _running    = 0;
-  var _maxTasks   = (max == undefined) ? 8 : max;
-  var _onComplete = null;
+  var _tasks    = [];
+  var _running  = 0;
+  var _inRun    = false;
+  var _maxTasks = (max == undefined) ? 8 : max;
 
   /***************************************************************************************/
   this.Add = function(task)
@@ -322,31 +325,49 @@ Cheetah.TaskList = function(max)
   /***************************************************************************************/
   this.Run = function(onComplete)
   {
-    _onComplete = onComplete;
     _run();
+
+    var self = this;
+
+    if(onComplete)
+    {
+      if(_running == 0 && _tasks.length == 0)
+        onComplete();
+      else
+      {
+        setTimeout( function()
+        {
+          self.Run(onComplete);
+        }, 
+        10);
+      }
+    }
   }
 
   /***************************************************************************************/
   var _run = function()
   {
-    while(_tasks.length > 0 && _running < _maxTasks)
+    if(!_inRun)
     {
-      var task = _tasks.shift();
+      _inRun = true;
 
-      ++_running;
+      try
+      {
+        while(_tasks.length > 0 && _running < _maxTasks)
+        {
+          var task = _tasks.shift();
 
-      task.Start();
+          ++_running;
+
+          task.Start();
+        }
+      }
+      catch(e)
+      {
+      }
+
+      _inRun = false;
     }
-
-    if((_running == 0 && _tasks.length == 0) && ch.IsValid(_onComplete))
-      _onComplete();
-  }
-
-  /***************************************************************************************/
-  this.WaitAll = function()
-  {  
-    while(_running > 0 || _tasks.length > 0)
-      $("#j8_kl59aa_").html($("#j8_kl59aa_").html()); // Best effort at a "sleep" function
   }
 
   /***************************************************************************************/
@@ -386,6 +407,30 @@ Cheetah.ConsoleLogger = function()
 Cheetah.DOMBuilder = function()
 {
 }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.GetValue = function(element)
+  {
+    var val = null;
+
+    if(element.localName == "select")
+      val = element.options[element.selectedIndex].value;
+    else if(element.localName == "input" && (element.type == "checkbox" || element.type == "radio"))
+      return element.checked;
+    else
+      val = element.value;
+
+    return ch.Convert(val);
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.SetValue = function(element, val)
+  {
+    if(element.localName == "input" && (element.type == "checkbox" || element.type == "radio"))
+      element.checked = val;
+    else
+      $(element).val(val);
+  }
 
   /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.FindElement = function(id)
@@ -459,9 +504,6 @@ Cheetah.DOMBuilder = function()
 
     return newElement;
   }
-
-  // GetChildrenRenderElement
-  // GetRenderParent
 
   /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.RenderText = function(element, insert, renderParent, txt)
@@ -566,6 +608,21 @@ Cheetah.DOMBuilder = function()
       return element.innerText = val;
 
     return $.trim(element.innerText);
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.AppendHtml = function(element, html)
+  {
+    $(element).append(html);
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.LastChild = function(element)
+  {
+    if(element && element.childNodes && element.childNodes.length > 0)
+      return element.childNodes[element.childNodes.length-1];
+
+    return null;
   }
 
   /*****************************************************************************/  
