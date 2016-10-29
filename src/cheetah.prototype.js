@@ -321,10 +321,17 @@ NodeList.prototype.Where = function(fn)
 }
 
 /***************************************************************************************/
+Array.prototype.Clear = function()
+{
+  this.splice(0, this.length);
+  return this;
+}
+
+/***************************************************************************************/
 Array.prototype.Where = function(fn, clone)
 {
   if(clone == undefined)
-    clone = true;
+    clone = false;
 
   var n   = this.length;
   var rtn = [];
@@ -349,27 +356,36 @@ Array.prototype.Where = function(fn, clone)
 /***************************************************************************************/
 Array.prototype.First = function(nItems, clone)
 {
-  if(clone == undefined)
-    clone = true;
-
-  var rtn = [];
-
   if(!ch.IsValidNumber(nItems))
     nItems = 1;
 
-  var n = Math.min(this.length, nItems);
+  var rtn = [];
 
-  for(var i = 0; i < n; ++i)
+  if(nItems >= this.length)
+    rtn = this;
+  else
   {
-    var item = this[i];
+    if(clone == undefined)
+      clone = false;
 
-    if(clone)
-      rtn.push(ch.Clone(item));
-    else
-      rtn.push(item);
+    var n = Math.min(this.length, nItems);
+
+    for(var i = 0; i < n; ++i)
+    {
+      var item = this[i];
+
+      if(clone)
+        rtn.push(ch.Clone(item));
+      else
+        rtn.push(item);
+    }
+
+    rtn.$$parent = this.$$parent;
   }
 
-  rtn.$$parent = this.$$parent;
+  if(rtn.length == 1 && nItems == 1)
+     return rtn[0];
+
   return(rtn);
 }
 
@@ -447,6 +463,18 @@ String.prototype.FirstInList = function(separator)
     return this;
 
   return this.substr(0, this.indexOf(separator));
+}
+
+/***************************************************************************************/
+String.prototype.Contains = function(val, caseSensitive) 
+{
+  if(!val)
+    return false;
+
+  if(caseSensitive)
+    return this.indexOf(val) != -1;
+
+  return this.toLowerCase().indexOf(val.toLowerCase()) != -1;
 }
 
 /***************************************************************************************/

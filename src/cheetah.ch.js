@@ -109,7 +109,12 @@ var ch = new function ()
     {
       var part = aParts[i];
 
-      if (part.indexOf("[") == 0)
+      if(part == "$$root" && i == 0)
+      {
+        while(model.$$parent)
+          model = model.$$parent;
+      }
+      else if (part.indexOf("[") == 0)
         model = model[Number(part.substr(1))];
       else if (part == "$$parent")
       {
@@ -123,29 +128,36 @@ var ch = new function ()
       }
       else
         model = model[part];
+
+      if(!model)
+        return model;
     }
 
     var part = aParts[n];
 
     if(part.indexOf("[") == 0)
-        return model[Number(part.substr(1))];
+        return !model ? model : model[Number(part.substr(1))];
 
-    return model[part];
+    return !model ? model : model[part];
   }
 
   /*****************************************************************************/
   this.SetModelValue = function (model, property, val)
   {
-    var aParts = property.split(".");
+    var aParts = property;
+
+    if(typeof property == "string")
+      aParts = property.split(".");
+
     var n = aParts.length - 1;
 
-    for (var i = 0; i < n; ++i)
+    for(var i = 0; i < n; ++i)
     {
       var part = aParts[i];
 
-      if (part == "$$parent")
+      if(part == "$$parent")
       {
-        if (!ch.IsValid(model.$$parent))
+        if(!ch.IsValid(model.$$parent))
         {
           LogError("$$parent is not valid");
           return;
@@ -346,7 +358,7 @@ var ch = new function ()
   this.Merge = function (obj1, obj2)
   {  
     for(var key in obj2) 
-      obj1[key] = obj2[key];
+      obj1[key] = ch.Clone(obj2[key]);
 
     return obj1;
   }
@@ -360,7 +372,7 @@ var ch = new function ()
     if (shallow == undefined)
       shallow = false;
 
-    if (val.length != undefined)
+    if(Array.isArray(val))
     {
       var aClone = [];
 
