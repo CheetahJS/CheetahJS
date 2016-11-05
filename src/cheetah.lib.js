@@ -413,10 +413,11 @@ Cheetah.DOMBuilder = function()
   {
     var val = null;
 
+    if(element.localName == "input" && (element.type == "checkbox" || element.type == "radio"))
+      return element.checked;
+
     if(element.localName == "select")
       val = element.options[element.selectedIndex].value;
-    else if(element.localName == "input" && (element.type == "checkbox" || element.type == "radio"))
-      return element.checked;
     else
       val = element.value;
 
@@ -566,7 +567,10 @@ Cheetah.DOMBuilder = function()
   /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.ShowElement = function(element, show)
   {
-    element.style.display = show ? "block" : "none";
+    if(show)
+      $(element).show();
+    else
+      $(element).hide();
   }
 
   /*****************************************************************************/  

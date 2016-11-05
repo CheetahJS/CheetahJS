@@ -51,7 +51,7 @@ function InitService(self, name, verb)
   self.AllowChildren = true;
 
   /***************************************************************************************/
-  self.ProcessAttributes = function(attrList)
+  self.ProcessAttributes = function(attrList, elem)
   {
     var params = {};
     var nAttr = attrList.length;
@@ -63,6 +63,9 @@ function InitService(self, name, verb)
       if(attr.name != "if")
         params[attr.name] = attr.value;  
     }
+
+    if(!params["url"] && elem)
+      params["url"] = Cheetah.Builder.InnerText(elem);
 
     return params;
   }

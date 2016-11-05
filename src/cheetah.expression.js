@@ -22,7 +22,7 @@
                     TransformOperators: {and: "&&", or: "||"},
                     EncodedTransformOperators: ["&gt;", "&lt;", "&amp;", "&quot;", "&apos;"],
                     EncodedTransformTo: [">", "<", "&", "\"", "'"],
-                    Operators: ["[", "]", "*", "/", "++", "--", "+=", "-=", "*=", "/=", "+", "-", "%", "<", "<=", ">", ">=", "==", "===", "!=", "!==", "!", "||", "&&", "?", ":", "(", ")", "~", "^", ">>", "<<", ",", "=>", "and", "or", "="],
+                    Operators: ["[", "]", "*", "/", "++", "--", "+=", "-=", "*=", "/=", "+", "-", "%", "<", "<=", ">", ">=", "==", "===", "!=", "!==", "!", "||", "&&", "?", ":", "(", ")", "~", "^", ">>", "<<", ",", "=>", "=:", "and", "or", "="],
                     LiteralValues: {xNaN: true, xundefined: true, xnull: true, xtrue: true, xfalse: true},
                     dOperators: null
                  };
@@ -292,7 +292,7 @@
 
       tokens.ForEach( function(token) 
       {
-        if(token == "=>")
+        if(token == "=>" || token == "=:")
         {
           delimiterStack.push(token);
           paramStack.push("()");
@@ -419,7 +419,9 @@
     /*****************************************************************************/
     TokenResolver.prototype.CheckLambda = function()
     { 
-      if(this._delimiterStack.peek() == "=>")
+      var peek = this._delimiterStack.peek();
+
+      if(peek == "=>" || peek == "=:")
       {
         this._output.push("; }");
         this._delimiterStack.pop();

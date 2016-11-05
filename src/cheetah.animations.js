@@ -129,25 +129,15 @@ var AnimateAnimation = new function()
   /***************************************************************************************/
   this.ProcessAttributes = function(attrList)
   {
-    var params = InitAnimation(attrList);
-
-    params.Options = {};
-
-    attrList.ForEach( function(attr)
-    {
-      if(attr.localName != "select" && attr.localName != "speed" && attr.localName != "if")
-        params.Options[attr.localName] = attr.value;
-    });
-
-    return params;
+    return InitAnimation(attrList);
   }
 
   /***************************************************************************************/
   this.Run = function(evt, target, vm, params, fnDone)
   {
-    RunAnimation(evt, target, params, function($q)
+    RunAnimation(evt, target, params, function($q, options)
     {
-      $q.animate(params.Options, params.Speed, fnDone);
+      $q.animate(options, params.Speed, fnDone);
     });
   }
 
@@ -158,10 +148,18 @@ var AnimateAnimation = new function()
 /***************************************************************************************/
 function InitAnimation(attrList)
 {
-  return  {
-            Speed:  ch.FindValue(attrList, "speed", "fast"),
-            Select: ch.FindValue(attrList, "select")
-          };
+  var params = {
+                Speed:  ch.FindValue(attrList, "speed", "fast"),
+                Select: ch.FindValue(attrList, "select")
+              };
+
+  attrList.ForEach( function(attr)
+  {
+    if(attr.localName != "select" && attr.localName != "speed" && attr.localName != "if")
+      params[attr.localName] = attr.value;
+  });
+
+  return params;
 }
 
 /***************************************************************************************/
@@ -178,7 +176,17 @@ function RunAnimation(evt, target, params, fn)
     $q = $(ch.EventTarget(evt));
 
   if($q)
-    fn($q);
+  {
+    var options = {};
+
+    for(var optionName in params)
+    {
+      if(optionName.toLowerCase() != "select" && optionName.toLowerCase() != "speed" && optionName != "if")
+          options[optionName] = params[optionName];
+    }
+
+    fn($q, options);
+  }
 }
 
 }(Cheetah, document);

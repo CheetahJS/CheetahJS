@@ -101,7 +101,7 @@ Cheetah.ViewModel = function(div)
   }
 
   /*****************************************************************************/
-  this.Confirm = function(msg, fn, fnLoad)
+  this.Confirm = function(msg, fn, title)
   {
     if(confirm(msg))
       fn();
@@ -432,9 +432,9 @@ _cheetah.ViewModel = function(vm, div)
   }
 
   /*****************************************************************************/
-  _cheetah.ViewModel.prototype.Confirm = function(msg, fn, fnLoad)
+  _cheetah.ViewModel.prototype.Confirm = function(msg, fn, title)
   {
-    this.ActualViewModel.Confirm(msg, fn, fnLoad);
+    this.ActualViewModel.Confirm(msg, fn, title);
   }
 
   /*****************************************************************************/
@@ -465,12 +465,6 @@ _cheetah.ViewModel = function(vm, div)
     this.Watchers.RemoveWatcher(watcher);
   }
   
-  /*****************************************************************************/
-  _cheetah.ViewModel.prototype.GetTransform = function(name)
-  { 
-    return _transforms[name];
-  }
-
   /*****************************************************************************/
   _cheetah.ViewModel.prototype.UpdateView = function()
   {
@@ -2175,9 +2169,6 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
               break;
 
             case "style":
-             // if(this.Watch)
-              //  this.AddWatcher(vm, new _cheetah.AttributeNodeWatcher(vm, this, name.substr(3), attr.value), _cheetah.Priority.Default, true);
-
               this.Style = attr.value;
               break;
 
@@ -2669,7 +2660,7 @@ _cheetah.Action = function(vm, context, element, parent)
   }
 
   /*****************************************************************************/
-  _cheetah.Action.prototype.EvalChildConditionalSetter = function(context, childNode, action, param)
+  _cheetah.Action.prototype.EvalChildConditionalSetter = function(context, childNode, action, param, title)
   {
     var childAction = this.CreateChild(context, childNode); 
 
@@ -2688,7 +2679,8 @@ _cheetah.Action = function(vm, context, element, parent)
         vm[action](param, function()
         {
           update = childAction.Run(evt, true);
-        });
+        },
+        title);
 
         return update;
       });
@@ -2883,7 +2875,12 @@ _cheetah.Action = function(vm, context, element, parent)
 
         this.SetActionStep(context, childNode, function(evt) 
         {
-          Cheetah.Logger.Error(ch.Evaluate(txt));           
+          var injected = {};
+
+          if(evt.$$result)
+            injected.$$result = evt.$$result;
+
+          Cheetah.Logger.Error(ch.Evaluate(txt, null, injected));           
         });
 
         break;
@@ -2891,17 +2888,29 @@ _cheetah.Action = function(vm, context, element, parent)
 
       case "message":
       {
-        var txt = $.trim(childNode.innerHTML);
-        var type = ch.AttributeValue(childNode, "type");
+        var txt   = $.trim(childNode.innerHTML);
+        var type  = ch.AttributeValue(childNode, "type");
+        var title = ch.AttributeValue(childNode, "title");
+
+        if(title)
+          title = context.EvaluateText(this.ViewModel, title);
 
         txt = context.EvaluateText(this.ViewModel, txt);
 
         this.SetActionStep(context, childNode, function(evt) 
         {
+          var injected = {};
+
+          if(evt.$$result)
+            injected.$$result = evt.$$result;
+
+          txt   = ch.Evaluate(txt, null, injected);
+          title = ch.Evaluate(title, null, injected);
+
           switch(type)
           {
-            case "error": vm.OnError(txt); break;
-            default:      vm.OnInfo(txt); break;
+            case "error": vm.OnError(txt, title); break;
+            default:      vm.OnInfo(txt, title); break;
           }
         });
 
@@ -2911,8 +2920,12 @@ _cheetah.Action = function(vm, context, element, parent)
       case "confirm":
       {
         var msg = ch.AttributeValue(childNode, "message");
+        var title = ch.AttributeValue(childNode, "title");
 
-        this.EvalChildConditionalSetter(context, childNode, "Confirm", msg);
+        if(title)
+          title = context.EvaluateText(this.ViewModel, title);
+
+        this.EvalChildConditionalSetter(context, childNode, "Confirm", msg, title);
         break;
       }
 
@@ -3008,7 +3021,7 @@ _cheetah.Action = function(vm, context, element, parent)
       var vm = this.ViewModel;
 
       if(step.ProcessAttributes)
-        params = step.ProcessAttributes(childNode.attributes) || {};
+        params = step.ProcessAttributes(childNode.attributes, childNode) || {};
 
       if(step.AllowChildren)
         childAction = this.CreateChild(context, childNode);
@@ -4189,30 +4202,34 @@ _cheetah.VisibilityWatcher = function(vm, context, cond)
 {
   _cheetah.ElementWatcher.call(this, vm, context);
 
-  this.Condition  = vm.CreateCondition(cond);
-  this.HideAction = null;
-  this.ShowAction = null;
+  this.Condition      = vm.CreateCondition(cond);
+  this.HideAction     = null;
+  this.ShowAction     = null;
+  this.PreviousResult = undefined;
 
   context.VisibilityWatcher = this;
 
   /*****************************************************************************/
   this.Eval = function(vm, forceResult)
   { 
-    var result = forceResult != undefined ? forceResult : this.Condition.Eval(this.Context);
-    var action = result ? this.ShowAction : this.HideAction;
+    var result = this.Condition.Eval(this.Context);
 
-    if(action != null)
+    if(forceResult || this.PreviousResult == undefined || result != this.PreviousResult)
     {
-      action.Run();
+      var action = result ? this.ShowAction : this.HideAction;
 
-      if(action.NumAnimations > 0)
-        return;
+      this.PreviousResult = result;
+
+      if(action != null)
+      {
+        action.Run();
+
+        if(action.NumAnimations > 0)
+          return;
+      }
+
+      Cheetah.DOMBuilder.prototype.ShowElement(this.Context.NewElement, result);
     }
-
-    if(result)
-      $(this.Context.NewElement).show();
-    else
-      $(this.Context.NewElement).hide();
   }
 }
 
