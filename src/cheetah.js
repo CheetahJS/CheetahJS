@@ -1,4 +1,17 @@
-﻿///#source 1 1 /scripts/cheetah.ch.js
+﻿/*****************************************************************************/
+/*                                                                           */
+/*    CheetahJS - "Because it's fast!"                                       */
+/*                                                                           */
+/*       An MVVM Javascript Library for fast web development                 */
+/*                                                                           */
+/*   Copyright (c) 2015-2016 - Jim Lightfoot                                 */
+/*                                                                           */
+/*      This software is available under the MIT license (MIT)               */
+/*                                                                           */
+/*           https://github.com/CheetahJS/CheetahJS/blob/master/LICENSE      */
+/*                                                                           */
+/*****************************************************************************/
+///#source 1 1 /scripts/cheetah.ch.js
 "use strict";
 
 /***************************************************************************************/
@@ -365,13 +378,16 @@ var ch = new function ()
   }
 
   /***************************************************************************************/
-  this.Clone = function (val, shallow)
+  this.Clone = function (val, shallow, normalize)
   {
     if (!val || typeof val !== "object")
       return val;
 
     if (shallow == undefined)
       shallow = false;
+
+    if(val instanceof Date)
+      return normalize ? val.toJSON() : (shallow ? val : new Date(val.getTime()));
 
     if(Array.isArray(val))
     {
@@ -3471,7 +3487,14 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
 
               break;
 
+            case "html":
+              if(this.Watch)
+                this.AddWatcher(vm, new _cheetah.HtmlWatcher(vm, this, attr.value), _cheetah.Priority.Default, true);
+
+              break;
+
             case "click":
+            case "blur":
             case "mouseover":
             case "mouseenter":
             case "mouseleave":
@@ -5517,6 +5540,34 @@ _cheetah.AttributeWatcher = function(vm, context, name, expr, type)
 
 /*****************************************************************************/
 /*****************************************************************************/
+_cheetah.HtmlWatcher = function(vm, context, modelName)
+{
+  _cheetah.ModelWatcher.call(this, vm, context);
+
+  var _modelName = modelName;
+  var _context   = context;
+  var _model     = ch.GetModelValue(context.Model, _modelName, context);
+
+  /*****************************************************************************/
+  this.ReRender = function()
+  {
+    var val = ch.GetModelValue(_context.Model, _modelName, _context);
+
+    _context.Builder.SetContents(_context.NewElement, val);
+  }
+
+  /*****************************************************************************/
+  this.Eval = function(vm, force)
+  {
+    var newVal = ch.GetModelValue(_context.Model, _modelName, _context);
+
+    if(force || newVal != _model)
+      this.ReRender(_model = newVal);
+  }
+}
+
+/*****************************************************************************/
+/*****************************************************************************/
 _cheetah.VisibilityWatcher = function(vm, context, cond)
 {
   _cheetah.ElementWatcher.call(this, vm, context);
@@ -5745,16 +5796,19 @@ Cheetah.Service = function()
   }
 
   /***************************************************************************************/
-  Cheetah.Service.prototype.Query = function(url, verb, params, callback, err_callback)
+  Cheetah.Service.prototype.Query = function(url, verb, params, callback, err_callback, options)
   {
     var self = this;
 
-    jQuery.ajax({
-                  url: url,
-                  method: verb,
-                  data: params
-                }
-                ).done
+    if(!options)
+      options = {};
+
+    options.url    = url;
+    options.method = verb;
+    options.data   = params;
+
+    jQuery.ajax(options)
+                .done
                 (
                   function(result)
                   {

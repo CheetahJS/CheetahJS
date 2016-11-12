@@ -364,13 +364,16 @@ var ch = new function ()
   }
 
   /***************************************************************************************/
-  this.Clone = function (val, shallow)
+  this.Clone = function (val, shallow, normalize)
   {
     if (!val || typeof val !== "object")
       return val;
 
     if (shallow == undefined)
       shallow = false;
+
+    if(val instanceof Date)
+      return normalize ? val.toJSON() : (shallow ? val : new Date(val.getTime()));
 
     if(Array.isArray(val))
     {
