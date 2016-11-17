@@ -1,17 +1,4 @@
-﻿/*****************************************************************************/
-/*                                                                           */
-/*    CheetahJS - "Because it's fast!"                                       */
-/*                                                                           */
-/*       An MVVM Javascript Library for fast web development                 */
-/*                                                                           */
-/*   Copyright (c) 2015-2016 - Jim Lightfoot                                 */
-/*                                                                           */
-/*      This software is available under the MIT license (MIT)               */
-/*                                                                           */
-/*           https://github.com/CheetahJS/CheetahJS/blob/master/LICENSE      */
-/*                                                                           */
-/*****************************************************************************/
-///#source 1 1 /scripts/cheetah.ch.js
+﻿///#source 1 1 /scripts/cheetah.ch.js
 "use strict";
 
 /***************************************************************************************/
@@ -125,8 +112,18 @@ var ch = new function ()
 
       if(part == "$$root" && i == 0)
       {
+        var z = 0;
+
         while(model.$$parent)
+        {
           model = model.$$parent;
+
+          if(++z == 1000)
+          {
+            LogError("Infinite recursion in model");
+            break;
+          }
+        }
       }
       else if (part.indexOf("[") == 0)
         model = model[Number(part.substr(1))];
@@ -169,7 +166,22 @@ var ch = new function ()
     {
       var part = aParts[i];
 
-      if(part == "$$parent")
+      if(part == "$$root" && i == 0)
+      {
+        var z = 0;
+
+        while(model.$$parent)
+        {
+          model = model.$$parent;
+
+          if(++z == 1000)
+          {
+            LogError("Infinite recursion in model");
+            break;
+          }
+        }
+      }
+      else if(part == "$$parent")
       {
         if(!ch.IsValid(model.$$parent))
         {
@@ -415,16 +427,22 @@ var ch = new function ()
   }
 
   /***************************************************************************************/
-  this.Convert = function (val)
+  this.Convert = function (val, type)
   {
-    if (!ch.IsValid(val))
+    if (!val)
       return (val);
+
+    if(val instanceof Date)
+      return val;
 
     if (typeof val != "string")
       return (val);
 
     if (val.length == 0)
       return (val);
+
+    if(type == "date")
+      return new Date(obj);
 
     var valc = $.trim(val.toLowerCase());
 
@@ -671,6 +689,35 @@ Array.prototype.ForEach = function(fn, stop)
 }
 
 /***************************************************************************************/
+Array.prototype.OrderBy = function(fieldName, ascending, type) 
+{
+  if(fieldName)
+  {
+    if(typeof fieldName != "string" && type == undefined)
+    {
+      type = ascending;
+      ascending = fieldName;
+      fieldName = null;
+    }
+
+    var compare = (ascending == undefined || ascending) ? 1 : -1;
+
+    this.sort( function(obj1, obj2)
+    {
+      var val1 = ch.Convert(fieldName ? obj1[fieldName] : obj1, type);
+      var val2 = ch.Convert(fieldName ? obj2[fieldName] : obj2, type);
+
+      if(val1 == val2)
+        return 0
+
+      return val1 >= val2 ? compare : -compare;
+    });
+  }
+
+  return this;
+}
+
+/***************************************************************************************/
 Array.prototype.ToDictionary = function(fn) 
 {
   var dict = {};
@@ -852,7 +899,6 @@ Array.prototype.MaxDate = function(fn)
 
   return max;
 }
-
 
 /***************************************************************************************/
 Array.prototype.MeanDate = function(fn) 
@@ -1238,6 +1284,7 @@ String.prototype.TrimAfterIncluding = function(strValue)
 }
 
 /***************************************************************************************/
+/***************************************************************************************/
 Number.prototype.PadLeft = function(nPlaces, char) 
 {
   var val = String(this);
@@ -1249,6 +1296,45 @@ Number.prototype.PadLeft = function(nPlaces, char)
     val = char + val;
 
   return(val);
+}
+
+/***************************************************************************************/
+/***************************************************************************************/
+Date.prototype.DateOnly = function() 
+{
+  return new Date(this.getFullYear(), this.getMonth(), this.getDate());
+}
+
+/***************************************************************************************/
+Date.prototype.AddDays = function(n) 
+{
+  var dt = new Date(this.getTime());
+
+  dt.setDate(dt.getDate() + n);
+
+  return dt;
+}
+
+/***************************************************************************************/
+Date.prototype.AddMinutes = function(n) 
+{
+  var dt = new Date(this.getTime());
+
+  dt.setMinutes(dt.getMinutes() + n);
+
+  return dt;
+}
+
+/***************************************************************************************/
+Date.prototype.WithinRange = function(dt1, dt2) 
+{
+  if(this.DateOnly() < dt2.DateOnly())
+    return false;
+
+  if(this.DateOnly() > dt2.DateOnly().AddDays(1))
+    return false;
+
+  return true;
 }
 
 /***************************************************************************************/
@@ -1968,6 +2054,7 @@ _cheetah.WatcherList = function(vm)
       {
         if(ch.IsValid(list[id]))
         {
+          list[id].Removed = true;
           delete list[id];
           return(false);
         }
@@ -1991,7 +2078,7 @@ _cheetah.WatcherList = function(vm)
         $.each(listClone, 
           function(i, wv)
           {
-            if(ch.IsValid(list[i]))
+            if(ch.IsValid(list[i]) && !wv.Removed)
             {
               try
               {
@@ -2263,7 +2350,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
   }
 
   /*****************************************************************************/
-  _cheetah.Element.prototype.CreateChild = function(elem, vm, insert, parent)
+  _cheetah.Element.prototype.CreateChild = function(elem, vm, insert, parent, noWatch)
   {
     var name = elem.localName;
 
@@ -2297,7 +2384,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
       switch(params.name)
       {
         case "ch-bind":
-          return new _cheetah.BindElement(vm, this, elem, this.Model);
+          return new _cheetah.BindElement(vm, this, elem, this.Model, noWatch);
 
         case "ch-if":
           this.LastIf = new _cheetah.IfElement(vm, this, elem, this.Model);
@@ -2482,7 +2569,6 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
    *****************************************************************************/
   _cheetah.Element.prototype.GetChildrenRenderElement = function(insert)
   {
-// ??? not working if cheetah element and previous was ch-if
     if(this.NewElement)
     {
       if(this.NewElement.childNodes.length > 0)
@@ -3034,18 +3120,19 @@ _cheetah.TemplateContents = function(vm, parentElement, elem, model)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.BindElement = function(vm, parentElement, element, model)
+_cheetah.BindElement = function(vm, parentElement, element, model, noWatch)
 {
   _cheetah.CheetahElement.call(this, vm, parentElement, element, model);
 
-  this.BindPath = ch.AttributeValue(this.Element, "on", true);
-  this.Bind     = this.BindPath;
+  this.BindPath         = ch.AttributeValue(this.Element, "on", true);
+  this.Bind             = this.BindPath;
   this.IsCheetahElement = true;
 
   if(ch.IsEmpty(this.Bind))
     throw "Missing 'on' attribute for ch-bind";
 
   var shouldWatch = false;
+  var array = true;
 
   if(Cheetah.IsExpressionText(this.Bind))
   {
@@ -3056,18 +3143,25 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
   {
     this.Bind = ch.GetModelValue(this.Model, this.Bind, this);
 
-    if(Array.isArray(this.Bind))
-      shouldWatch = true;
+    if(!Array.isArray(this.Bind))
+      array = false;
+
+    shouldWatch = true;
   }
 
   this.Sort = ch.AttributeValue(this.Element, "sort");
 
-  if(shouldWatch && this.Watch)
+  if(shouldWatch && this.Watch && !noWatch)
   {
-    if(!ch.IsEmpty(this.Sort))
-      this.Sort = this.EvaluateText(this.ViewModel, this.Sort);
+    if(array)
+    {
+      if(!ch.IsEmpty(this.Sort))
+        this.Sort = this.EvaluateText(this.ViewModel, this.Sort);
 
-    this.AddWatcher(this.ViewModel, new _cheetah.BindWatcher(this));
+      this.AddWatcher(this.ViewModel, new _cheetah.BindArrayWatcher(this));
+    }
+    else
+      this.AddWatcher(this.ViewModel, new _cheetah.BindWatcher(this));
   }
 }
 
@@ -3085,9 +3179,13 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
     if(this.Bind.Eval)
       return this.Bind.Eval(this, this.Model);
 
+    var oldBind = this.Bind;
+
     this.Bind = ch.GetModelValue(this.Model, this.BindPath, this);
 
-    if(this.Bind)
+    if(!this.Bind)
+      Cheetah.Logger.Error("Bind value is null");
+    else
       this.Bind.$$path = this.BindPath;
 
     return this.Bind;
@@ -3111,7 +3209,7 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
 
       data.$$parent  = this.Model;
 
-      var newContext = this.CreateChild(this.Element, this.ViewModel);
+      var newContext = this.CreateChild(this.Element, this.ViewModel, true);
 
       newContext.Model = data;
 
@@ -3174,7 +3272,15 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
               }));
     }
     else
+    {
+     // this.Model = model;
+     // this.ParentModel = model ? model.$$parent : null;
+
+     // if(!this.ParentModel)
+     //     console.error("Yikes!");
+
       this.ProcessChildren(insert);
+    }
 
     return(true);
   }
@@ -3693,7 +3799,7 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
         {
           var newVal = val.Eval(self);
 
-          ch.SetModelValue(self.Model, prop, newVal);
+          ch.SetModelValue(self.Model, prop, ch.Clone(newVal));
           vm.UpdateView();
         });
       }
@@ -4246,7 +4352,9 @@ _cheetah.Action = function(vm, context, element, parent)
           if(evt.$$result)
             injected.$$result = evt.$$result;
 
-          txt   = ch.Evaluate(txt, null, injected);
+          txt = ch.Evaluate(txt, null, injected);
+
+          if(title)
           title = ch.Evaluate(title, null, injected);
 
           switch(type)
@@ -4699,11 +4807,11 @@ _cheetah.ElementWatcher = function(vm, context)
   this.Context = context;
 
   /*****************************************************************************/
-  this.ReRender = function(model, render, context)
+  this.ReRender = function(model, render, context, clear)
   {
     context = ch.Coalesce(context, this.Context);
 
-    context.Clear();
+    context.Clear(clear, clear);
 
     if(render == undefined || render)
     {
@@ -4886,7 +4994,7 @@ _cheetah.ModelWatcher = function(vm, context)
   var _variables  = new Cheetah.KeyedSet();
 
   /*****************************************************************************/
-  this.ModelChanged = function(model, newModel)
+  this.ModelChanged = function(model, newModel, clear)
   {
     var context = this.Context;
 
@@ -4911,7 +5019,7 @@ _cheetah.ModelWatcher = function(vm, context)
         return true;
       }
 
-      this.ReRender(modelCompare);
+      this.ReRender(modelCompare, null, null, clear);
       return(false);
     }
 
@@ -5056,14 +5164,80 @@ _cheetah.BindWatcher = function(context)
 
       if(oldModel)
         checkModel.$$path = oldModel.$$path;
+    }
 
-      if(Array.isArray(checkModel))
+    if(this.BaseModelChanged(checkModel, newModel))
+    {
+      _model = CloneModel(checkModel);
+      return(true);
+    }
+
+    return false;
+  }
+
+   /*****************************************************************************/
+  this.ReRender = function(model, render, context, clear)
+  {
+    ForceRedraw(this.Context);
+  }
+
+  /*****************************************************************************/
+  function ForceRedraw(context)
+  {
+    context.Children.ForEach
+    (
+      function(child)
       {
-        if(!Array.isArray(oldModel) || checkModel.length != oldModel.length)
-        {
-          _model = CloneModel(checkModel);
-          return true;
-        }
+        if(context.Model && context.Model.$$id)
+          delete context.Model.$$id;
+
+        ForceRedraw(child);
+      }
+    );
+  }
+
+  /*****************************************************************************/
+  this.Eval = function(vm, force)
+  {
+    if(this.ModelChanged())
+      this.ReRender(_model);
+  }
+}
+
+/*****************************************************************************/
+/*****************************************************************************/
+_cheetah.BindArrayWatcher = function(context)
+{
+  _cheetah.ModelWatcher.call(this, context.ViewModel, context);
+
+  var _vm        = context.ViewModel;
+  var _rendered  = false;
+  var _model     = CloneModel(context.EvaluateBind());
+
+  this.BaseReRender = this.ReRender;
+  this.BaseModelChanged = this.ModelChanged;
+
+  /*****************************************************************************/
+  this.ModelChanged = function()
+  {
+    _rendered = false;
+
+    var newModel = {};
+    var oldModel = _model;
+
+    var checkModel = this.Context.EvaluateBind();
+
+    if(checkModel)
+    {
+      checkModel.$$parent = this.Context.Model;
+
+      if(oldModel)
+        checkModel.$$path = oldModel.$$path;
+
+      if(checkModel.length != oldModel.length)
+      {
+        _model = CloneModel(checkModel);
+        return true;
       }
     }
 
@@ -5104,7 +5278,23 @@ _cheetah.BindWatcher = function(context)
     return changed;
   }
 
+   /*****************************************************************************/
+  this.ReRender = function(model, render, context, clear)
+  {
+    _rendered = true;
+
+    this.BaseReRender(model, render, context, clear);
+  }
+
   /*****************************************************************************/
+  this.Eval = function(vm, force)
+  {
+    if(this.ModelChanged())
+      this.ReRender(_model);
+  }
+}
+
+ /*****************************************************************************/
   function CloneModel(model, oldModel)
   {  
     var newModel = ch.ShallowClone(model);
@@ -5131,7 +5321,6 @@ _cheetah.BindWatcher = function(context)
       CopyCheetahAttributes(arr, copy)
   }
 
-
   /*****************************************************************************/
   function CopyCheetahAttributes(obj1, obj2)
   {
@@ -5140,23 +5329,6 @@ _cheetah.BindWatcher = function(context)
     obj1.$$parent = obj2.$$parent;
     obj1.$$path   = obj2.$$path;
   }
-
-  /*****************************************************************************/
-  this.ReRender = function(model, render)
-  {
-    _rendered = true;
-  //  _list = model;
-
-    this.BaseReRender(model, render);
-  }
-
-  /*****************************************************************************/
-  this.Eval = function(vm, force)
-  {
-    if(this.ModelChanged())
-      this.ReRender(_model);
-  }
-}
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -5549,17 +5721,20 @@ _cheetah.HtmlWatcher = function(vm, context, modelName)
   var _model     = ch.GetModelValue(context.Model, _modelName, context);
 
   /*****************************************************************************/
-  this.ReRender = function()
+  this.ReRender = function(model)
   {
-    var val = ch.GetModelValue(_context.Model, _modelName, _context);
-
-    _context.Builder.SetContents(_context.NewElement, val);
+    _context.Builder.SetContents(_context.NewElement, model ? model : "");
   }
 
   /*****************************************************************************/
   this.Eval = function(vm, force)
   {
-    var newVal = ch.GetModelValue(_context.Model, _modelName, _context);
+    var model  = _context.Model;
+
+    if(model.$$parent && model.$$path)
+      model = model.$$parent[model.$$path];
+
+    var newVal = ch.GetModelValue(model, _modelName, _context);
 
     if(force || newVal != _model)
       this.ReRender(_model = newVal);
@@ -5635,16 +5810,14 @@ Cheetah.Transform = function()
   /*****************************************************************************/
   this.OnBind = function(elem, bindExpr, onchange)
   {
-    var evt  = "";
+    var evts = [ "change" ];
 
     switch(this.NewName)
     {
-      case "select":   
-        evt = "change"; 
-        break;
-
       case "textarea": 
-        evt = "keyup";
+        evts.push("keyup");
+        evts.push("paste");
+        evts.push("cut");
         break;
 
       case "input":
@@ -5657,11 +5830,13 @@ Cheetah.Transform = function()
           case "date":  
           case "number":  
           case "url":  
-            evt = "keyup"; 
+            evts.push("keyup"); 
+            evts.push("paste"); 
+            evts.push("cut"); 
+            evts.push("input"); 
             break;
 
           default:      
-            evt = "change"; 
             break;
         }
       }
@@ -5670,18 +5845,24 @@ Cheetah.Transform = function()
     var bindings = bindExpr.split(":");
 
     if(bindings.length == 2)
-      evt = $.trim(bindings[1]);
-
-    if(evt == "")
-      throw "No known event type for this element";
+    {
+      evts = evts.splice(0, evts.length);
+      evts.push($.trim(bindings[1]));
+    }
 
     var self = this;
 
-    $(elem).on(evt, function(evt) 
-    { 
-      var val = self.GetValue(ch.EventTarget(evt));
+    evts.ForEach( function(evt)
+    {
+      if(evt)
+      {
+        $(elem).on(evt, function(evt) 
+        { 
+          var val = self.GetValue(ch.EventTarget(evt));
 
-      onchange(val);
+          onchange(val);
+        });
+      }
     });
   }
 }
@@ -6801,6 +6982,8 @@ Cheetah.DOMBuilder = function()
   {
     if(child.parentElement)
       child.parentElement.removeChild(child);
+    else if(child.parentNode)
+      child.parentNode.removeChild(child);
   }
 
   /*****************************************************************************/  
@@ -7117,7 +7300,8 @@ Cheetah.DOMStringBuilder = function()
           if(!injected)
             injected = {};
 
-          injected.$$root = _vm.Model;
+          injected.$$root  = _vm.Model;
+          injected.$$scope = model;
 
           return(fn(_vm, model, injected, ec));
         }
@@ -7139,7 +7323,7 @@ Cheetah.DOMStringBuilder = function()
         _cheetah.dOperators = _cheetah.Operators.ToDictionary();
 
       var c    = new _cheetah.Compiler();
-      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1});
+      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1, $$scope: 1});
 
       if(expr.indexOf("return") == 0)
         _fn = new Function("__vm", "__model", "__injected", "__ec", expr);

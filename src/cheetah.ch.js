@@ -111,8 +111,18 @@ var ch = new function ()
 
       if(part == "$$root" && i == 0)
       {
+        var z = 0;
+
         while(model.$$parent)
+        {
           model = model.$$parent;
+
+          if(++z == 1000)
+          {
+            LogError("Infinite recursion in model");
+            break;
+          }
+        }
       }
       else if (part.indexOf("[") == 0)
         model = model[Number(part.substr(1))];
@@ -155,7 +165,22 @@ var ch = new function ()
     {
       var part = aParts[i];
 
-      if(part == "$$parent")
+      if(part == "$$root" && i == 0)
+      {
+        var z = 0;
+
+        while(model.$$parent)
+        {
+          model = model.$$parent;
+
+          if(++z == 1000)
+          {
+            LogError("Infinite recursion in model");
+            break;
+          }
+        }
+      }
+      else if(part == "$$parent")
       {
         if(!ch.IsValid(model.$$parent))
         {
@@ -401,16 +426,22 @@ var ch = new function ()
   }
 
   /***************************************************************************************/
-  this.Convert = function (val)
+  this.Convert = function (val, type)
   {
-    if (!ch.IsValid(val))
+    if (!val)
       return (val);
+
+    if(val instanceof Date)
+      return val;
 
     if (typeof val != "string")
       return (val);
 
     if (val.length == 0)
       return (val);
+
+    if(type == "date")
+      return new Date(obj);
 
     var valc = $.trim(val.toLowerCase());
 

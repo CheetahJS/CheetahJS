@@ -633,6 +633,7 @@ _cheetah.WatcherList = function(vm)
       {
         if(ch.IsValid(list[id]))
         {
+          list[id].Removed = true;
           delete list[id];
           return(false);
         }
@@ -656,7 +657,7 @@ _cheetah.WatcherList = function(vm)
         $.each(listClone, 
           function(i, wv)
           {
-            if(ch.IsValid(list[i]))
+            if(ch.IsValid(list[i]) && !wv.Removed)
             {
               try
               {
@@ -928,7 +929,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
   }
 
   /*****************************************************************************/
-  _cheetah.Element.prototype.CreateChild = function(elem, vm, insert, parent)
+  _cheetah.Element.prototype.CreateChild = function(elem, vm, insert, parent, noWatch)
   {
     var name = elem.localName;
 
@@ -962,7 +963,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
       switch(params.name)
       {
         case "ch-bind":
-          return new _cheetah.BindElement(vm, this, elem, this.Model);
+          return new _cheetah.BindElement(vm, this, elem, this.Model, noWatch);
 
         case "ch-if":
           this.LastIf = new _cheetah.IfElement(vm, this, elem, this.Model);
@@ -1147,7 +1148,6 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
    *****************************************************************************/
   _cheetah.Element.prototype.GetChildrenRenderElement = function(insert)
   {
-// ??? not working if cheetah element and previous was ch-if
     if(this.NewElement)
     {
       if(this.NewElement.childNodes.length > 0)
@@ -1699,18 +1699,19 @@ _cheetah.TemplateContents = function(vm, parentElement, elem, model)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.BindElement = function(vm, parentElement, element, model)
+_cheetah.BindElement = function(vm, parentElement, element, model, noWatch)
 {
   _cheetah.CheetahElement.call(this, vm, parentElement, element, model);
 
-  this.BindPath = ch.AttributeValue(this.Element, "on", true);
-  this.Bind     = this.BindPath;
+  this.BindPath         = ch.AttributeValue(this.Element, "on", true);
+  this.Bind             = this.BindPath;
   this.IsCheetahElement = true;
 
   if(ch.IsEmpty(this.Bind))
     throw "Missing 'on' attribute for ch-bind";
 
   var shouldWatch = false;
+  var array = true;
 
   if(Cheetah.IsExpressionText(this.Bind))
   {
@@ -1721,18 +1722,25 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
   {
     this.Bind = ch.GetModelValue(this.Model, this.Bind, this);
 
-    if(Array.isArray(this.Bind))
-      shouldWatch = true;
+    if(!Array.isArray(this.Bind))
+      array = false;
+
+    shouldWatch = true;
   }
 
   this.Sort = ch.AttributeValue(this.Element, "sort");
 
-  if(shouldWatch && this.Watch)
+  if(shouldWatch && this.Watch && !noWatch)
   {
-    if(!ch.IsEmpty(this.Sort))
-      this.Sort = this.EvaluateText(this.ViewModel, this.Sort);
+    if(array)
+    {
+      if(!ch.IsEmpty(this.Sort))
+        this.Sort = this.EvaluateText(this.ViewModel, this.Sort);
 
-    this.AddWatcher(this.ViewModel, new _cheetah.BindWatcher(this));
+      this.AddWatcher(this.ViewModel, new _cheetah.BindArrayWatcher(this));
+    }
+    else
+      this.AddWatcher(this.ViewModel, new _cheetah.BindWatcher(this));
   }
 }
 
@@ -1750,9 +1758,13 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
     if(this.Bind.Eval)
       return this.Bind.Eval(this, this.Model);
 
+    var oldBind = this.Bind;
+
     this.Bind = ch.GetModelValue(this.Model, this.BindPath, this);
 
-    if(this.Bind)
+    if(!this.Bind)
+      Cheetah.Logger.Error("Bind value is null");
+    else
       this.Bind.$$path = this.BindPath;
 
     return this.Bind;
@@ -1776,7 +1788,7 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
 
       data.$$parent  = this.Model;
 
-      var newContext = this.CreateChild(this.Element, this.ViewModel);
+      var newContext = this.CreateChild(this.Element, this.ViewModel, true);
 
       newContext.Model = data;
 
@@ -1839,7 +1851,15 @@ _cheetah.BindElement = function(vm, parentElement, element, model)
               }));
     }
     else
+    {
+     // this.Model = model;
+     // this.ParentModel = model ? model.$$parent : null;
+
+     // if(!this.ParentModel)
+     //     console.error("Yikes!");
+
       this.ProcessChildren(insert);
+    }
 
     return(true);
   }
@@ -2358,7 +2378,7 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
         {
           var newVal = val.Eval(self);
 
-          ch.SetModelValue(self.Model, prop, newVal);
+          ch.SetModelValue(self.Model, prop, ch.Clone(newVal));
           vm.UpdateView();
         });
       }
@@ -2911,7 +2931,9 @@ _cheetah.Action = function(vm, context, element, parent)
           if(evt.$$result)
             injected.$$result = evt.$$result;
 
-          txt   = ch.Evaluate(txt, null, injected);
+          txt = ch.Evaluate(txt, null, injected);
+
+          if(title)
           title = ch.Evaluate(title, null, injected);
 
           switch(type)
@@ -3364,11 +3386,11 @@ _cheetah.ElementWatcher = function(vm, context)
   this.Context = context;
 
   /*****************************************************************************/
-  this.ReRender = function(model, render, context)
+  this.ReRender = function(model, render, context, clear)
   {
     context = ch.Coalesce(context, this.Context);
 
-    context.Clear();
+    context.Clear(clear, clear);
 
     if(render == undefined || render)
     {
@@ -3551,7 +3573,7 @@ _cheetah.ModelWatcher = function(vm, context)
   var _variables  = new Cheetah.KeyedSet();
 
   /*****************************************************************************/
-  this.ModelChanged = function(model, newModel)
+  this.ModelChanged = function(model, newModel, clear)
   {
     var context = this.Context;
 
@@ -3576,7 +3598,7 @@ _cheetah.ModelWatcher = function(vm, context)
         return true;
       }
 
-      this.ReRender(modelCompare);
+      this.ReRender(modelCompare, null, null, clear);
       return(false);
     }
 
@@ -3721,14 +3743,80 @@ _cheetah.BindWatcher = function(context)
 
       if(oldModel)
         checkModel.$$path = oldModel.$$path;
+    }
 
-      if(Array.isArray(checkModel))
+    if(this.BaseModelChanged(checkModel, newModel))
+    {
+      _model = CloneModel(checkModel);
+      return(true);
+    }
+
+    return false;
+  }
+
+   /*****************************************************************************/
+  this.ReRender = function(model, render, context, clear)
+  {
+    ForceRedraw(this.Context);
+  }
+
+  /*****************************************************************************/
+  function ForceRedraw(context)
+  {
+    context.Children.ForEach
+    (
+      function(child)
       {
-        if(!Array.isArray(oldModel) || checkModel.length != oldModel.length)
-        {
-          _model = CloneModel(checkModel);
-          return true;
-        }
+        if(context.Model && context.Model.$$id)
+          delete context.Model.$$id;
+
+        ForceRedraw(child);
+      }
+    );
+  }
+
+  /*****************************************************************************/
+  this.Eval = function(vm, force)
+  {
+    if(this.ModelChanged())
+      this.ReRender(_model);
+  }
+}
+
+/*****************************************************************************/
+/*****************************************************************************/
+_cheetah.BindArrayWatcher = function(context)
+{
+  _cheetah.ModelWatcher.call(this, context.ViewModel, context);
+
+  var _vm        = context.ViewModel;
+  var _rendered  = false;
+  var _model     = CloneModel(context.EvaluateBind());
+
+  this.BaseReRender = this.ReRender;
+  this.BaseModelChanged = this.ModelChanged;
+
+  /*****************************************************************************/
+  this.ModelChanged = function()
+  {
+    _rendered = false;
+
+    var newModel = {};
+    var oldModel = _model;
+
+    var checkModel = this.Context.EvaluateBind();
+
+    if(checkModel)
+    {
+      checkModel.$$parent = this.Context.Model;
+
+      if(oldModel)
+        checkModel.$$path = oldModel.$$path;
+
+      if(checkModel.length != oldModel.length)
+      {
+        _model = CloneModel(checkModel);
+        return true;
       }
     }
 
@@ -3769,7 +3857,23 @@ _cheetah.BindWatcher = function(context)
     return changed;
   }
 
+   /*****************************************************************************/
+  this.ReRender = function(model, render, context, clear)
+  {
+    _rendered = true;
+
+    this.BaseReRender(model, render, context, clear);
+  }
+
   /*****************************************************************************/
+  this.Eval = function(vm, force)
+  {
+    if(this.ModelChanged())
+      this.ReRender(_model);
+  }
+}
+
+ /*****************************************************************************/
   function CloneModel(model, oldModel)
   {  
     var newModel = ch.ShallowClone(model);
@@ -3796,7 +3900,6 @@ _cheetah.BindWatcher = function(context)
       CopyCheetahAttributes(arr, copy)
   }
 
-
   /*****************************************************************************/
   function CopyCheetahAttributes(obj1, obj2)
   {
@@ -3805,23 +3908,6 @@ _cheetah.BindWatcher = function(context)
     obj1.$$parent = obj2.$$parent;
     obj1.$$path   = obj2.$$path;
   }
-
-  /*****************************************************************************/
-  this.ReRender = function(model, render)
-  {
-    _rendered = true;
-  //  _list = model;
-
-    this.BaseReRender(model, render);
-  }
-
-  /*****************************************************************************/
-  this.Eval = function(vm, force)
-  {
-    if(this.ModelChanged())
-      this.ReRender(_model);
-  }
-}
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -4214,17 +4300,20 @@ _cheetah.HtmlWatcher = function(vm, context, modelName)
   var _model     = ch.GetModelValue(context.Model, _modelName, context);
 
   /*****************************************************************************/
-  this.ReRender = function()
+  this.ReRender = function(model)
   {
-    var val = ch.GetModelValue(_context.Model, _modelName, _context);
-
-    _context.Builder.SetContents(_context.NewElement, val);
+    _context.Builder.SetContents(_context.NewElement, model ? model : "");
   }
 
   /*****************************************************************************/
   this.Eval = function(vm, force)
   {
-    var newVal = ch.GetModelValue(_context.Model, _modelName, _context);
+    var model  = _context.Model;
+
+    if(model.$$parent && model.$$path)
+      model = model.$$parent[model.$$path];
+
+    var newVal = ch.GetModelValue(model, _modelName, _context);
 
     if(force || newVal != _model)
       this.ReRender(_model = newVal);
@@ -4300,16 +4389,14 @@ Cheetah.Transform = function()
   /*****************************************************************************/
   this.OnBind = function(elem, bindExpr, onchange)
   {
-    var evt  = "";
+    var evts = [ "change" ];
 
     switch(this.NewName)
     {
-      case "select":   
-        evt = "change"; 
-        break;
-
       case "textarea": 
-        evt = "keyup";
+        evts.push("keyup");
+        evts.push("paste");
+        evts.push("cut");
         break;
 
       case "input":
@@ -4322,11 +4409,13 @@ Cheetah.Transform = function()
           case "date":  
           case "number":  
           case "url":  
-            evt = "keyup"; 
+            evts.push("keyup"); 
+            evts.push("paste"); 
+            evts.push("cut"); 
+            evts.push("input"); 
             break;
 
           default:      
-            evt = "change"; 
             break;
         }
       }
@@ -4335,18 +4424,24 @@ Cheetah.Transform = function()
     var bindings = bindExpr.split(":");
 
     if(bindings.length == 2)
-      evt = $.trim(bindings[1]);
-
-    if(evt == "")
-      throw "No known event type for this element";
+    {
+      evts = evts.splice(0, evts.length);
+      evts.push($.trim(bindings[1]));
+    }
 
     var self = this;
 
-    $(elem).on(evt, function(evt) 
-    { 
-      var val = self.GetValue(ch.EventTarget(evt));
+    evts.ForEach( function(evt)
+    {
+      if(evt)
+      {
+        $(elem).on(evt, function(evt) 
+        { 
+          var val = self.GetValue(ch.EventTarget(evt));
 
-      onchange(val);
+          onchange(val);
+        });
+      }
     });
   }
 }

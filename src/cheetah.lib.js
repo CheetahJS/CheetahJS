@@ -562,6 +562,8 @@ Cheetah.DOMBuilder = function()
   {
     if(child.parentElement)
       child.parentElement.removeChild(child);
+    else if(child.parentNode)
+      child.parentNode.removeChild(child);
   }
 
   /*****************************************************************************/  

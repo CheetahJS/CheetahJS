@@ -71,7 +71,8 @@
           if(!injected)
             injected = {};
 
-          injected.$$root = _vm.Model;
+          injected.$$root  = _vm.Model;
+          injected.$$scope = model;
 
           return(fn(_vm, model, injected, ec));
         }
@@ -93,7 +94,7 @@
         _cheetah.dOperators = _cheetah.Operators.ToDictionary();
 
       var c    = new _cheetah.Compiler();
-      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1});
+      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1, $$scope: 1});
 
       if(expr.indexOf("return") == 0)
         _fn = new Function("__vm", "__model", "__injected", "__ec", expr);

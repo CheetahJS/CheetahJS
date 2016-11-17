@@ -21,6 +21,35 @@ Array.prototype.ForEach = function(fn, stop)
 }
 
 /***************************************************************************************/
+Array.prototype.OrderBy = function(fieldName, ascending, type) 
+{
+  if(fieldName)
+  {
+    if(typeof fieldName != "string" && type == undefined)
+    {
+      type = ascending;
+      ascending = fieldName;
+      fieldName = null;
+    }
+
+    var compare = (ascending == undefined || ascending) ? 1 : -1;
+
+    this.sort( function(obj1, obj2)
+    {
+      var val1 = ch.Convert(fieldName ? obj1[fieldName] : obj1, type);
+      var val2 = ch.Convert(fieldName ? obj2[fieldName] : obj2, type);
+
+      if(val1 == val2)
+        return 0
+
+      return val1 >= val2 ? compare : -compare;
+    });
+  }
+
+  return this;
+}
+
+/***************************************************************************************/
 Array.prototype.ToDictionary = function(fn) 
 {
   var dict = {};
@@ -202,7 +231,6 @@ Array.prototype.MaxDate = function(fn)
 
   return max;
 }
-
 
 /***************************************************************************************/
 Array.prototype.MeanDate = function(fn) 
@@ -588,6 +616,7 @@ String.prototype.TrimAfterIncluding = function(strValue)
 }
 
 /***************************************************************************************/
+/***************************************************************************************/
 Number.prototype.PadLeft = function(nPlaces, char) 
 {
   var val = String(this);
@@ -599,6 +628,45 @@ Number.prototype.PadLeft = function(nPlaces, char)
     val = char + val;
 
   return(val);
+}
+
+/***************************************************************************************/
+/***************************************************************************************/
+Date.prototype.DateOnly = function() 
+{
+  return new Date(this.getFullYear(), this.getMonth(), this.getDate());
+}
+
+/***************************************************************************************/
+Date.prototype.AddDays = function(n) 
+{
+  var dt = new Date(this.getTime());
+
+  dt.setDate(dt.getDate() + n);
+
+  return dt;
+}
+
+/***************************************************************************************/
+Date.prototype.AddMinutes = function(n) 
+{
+  var dt = new Date(this.getTime());
+
+  dt.setMinutes(dt.getMinutes() + n);
+
+  return dt;
+}
+
+/***************************************************************************************/
+Date.prototype.WithinRange = function(dt1, dt2) 
+{
+  if(this.DateOnly() < dt2.DateOnly())
+    return false;
+
+  if(this.DateOnly() > dt2.DateOnly().AddDays(1))
+    return false;
+
+  return true;
 }
 
 /***************************************************************************************/
