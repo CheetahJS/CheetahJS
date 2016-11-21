@@ -428,42 +428,35 @@ var ch = new function ()
   /***************************************************************************************/
   this.Convert = function (val, type)
   {
-    if (!val)
-      return (val);
-
-    if(val instanceof Date)
+    if (!val || val instanceof Date)
       return val;
 
-    if (typeof val != "string")
-      return (val);
-
-    if (val.length == 0)
-      return (val);
+    if (typeof val != "string" || val.length == 0)
+      return val;
 
     if(type == "date")
-      return new Date(obj);
+      return new Date(val);
 
-    var valc = $.trim(val.toLowerCase());
+        val  = $.trim(val);
+    var valc = val.toLowerCase();
 
     if (valc == "true")
-      return (true);
+      return true;
 
     if (valc == "false")
-      return (false);
+      return false;
 
-    var n = parseFloat(valc);
+    var n = parseFloat(val);
 
-    if (!isNaN(n))
-      return (n);
-
-    val = $.trim(val);
+    if (!isNaN(n) && String(n) == val)
+      return n;
 
     if (val.indexOf("\"") == 0 && val.lastIndexOf("\"") == val.length - 1)
       val = val.substr(1, val.length - 2);
     else if (val.indexOf("'") == 0 && val.lastIndexOf("'") == val.length - 1)
       val = val.substr(1, val.length - 2);
 
-    return (val)
+    return val;
   }
 
   /***************************************************************************************/

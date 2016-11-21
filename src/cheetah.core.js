@@ -194,6 +194,25 @@ _cheetah.ViewModel = function(vm, div)
 }
 
   /*****************************************************************************/
+  _cheetah.ViewModel.prototype.FixModel = function(model)
+  {
+    if(!model.$$id)
+    {
+      if(model.$$parent && model.$$path)
+      {
+        var parentModel = this.FixModel(model.$$parent);
+
+        model = ch.GetModelValue(parentModel, model.$$path);
+      }
+
+      if(!model.$$id)
+        model.$$Id = this.ModelID++;
+    }
+
+    return model;
+  }
+    
+  /*****************************************************************************/
   _cheetah.ViewModel.prototype.GetContainer = function()
   {  
     return this.Container == "body" ? 
@@ -3415,10 +3434,13 @@ _cheetah.Property = function(prop, model)
   }
 
   /*****************************************************************************/
-  this.GetValue = function() 
+  this.GetValue = function(model) 
   {
     if(_prop == "__expr__")
         return _prop;
+
+    if(model)
+      _model = model;
 
     return ch.GetModelValue(_model, _prop);
   }
@@ -3505,7 +3527,10 @@ _cheetah.PropertyWatcher = function(vm, context)
   {
     context.TransformMethod("SetValue", function(transform)
     {
-      var val = _bind.GetValue();
+      if(!context.Model.$$id)
+        context.Model = vm.FixModel(context.Model);
+
+      var val = _bind.GetValue(context.Model);
 
       if(context.Format)
         val = ch.Evaluate(context.Format, null, {$$value: val});

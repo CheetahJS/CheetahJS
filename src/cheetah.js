@@ -1,4 +1,17 @@
-﻿///#source 1 1 /scripts/cheetah.ch.js
+﻿/*****************************************************************************/
+/*                                                                           */
+/*    CheetahJS - "Because it's fast!"                                       */
+/*                                                                           */
+/*       An MVVM Javascript Library for fast web development                 */
+/*                                                                           */
+/*   Copyright (c) 2015-2016 - Jim Lightfoot                                 */
+/*                                                                           */
+/*      This software is available under the MIT license (MIT)               */
+/*                                                                           */
+/*           https://github.com/CheetahJS/CheetahJS/blob/master/LICENSE      */
+/*                                                                           */
+/*****************************************************************************/
+///#source 1 1 /scripts/cheetah.ch.js
 "use strict";
 
 /***************************************************************************************/
@@ -429,42 +442,35 @@ var ch = new function ()
   /***************************************************************************************/
   this.Convert = function (val, type)
   {
-    if (!val)
-      return (val);
-
-    if(val instanceof Date)
+    if (!val || val instanceof Date)
       return val;
 
-    if (typeof val != "string")
-      return (val);
-
-    if (val.length == 0)
-      return (val);
+    if (typeof val != "string" || val.length == 0)
+      return val;
 
     if(type == "date")
-      return new Date(obj);
+      return new Date(val);
 
-    var valc = $.trim(val.toLowerCase());
+        val  = $.trim(val);
+    var valc = val.toLowerCase();
 
     if (valc == "true")
-      return (true);
+      return true;
 
     if (valc == "false")
-      return (false);
+      return false;
 
-    var n = parseFloat(valc);
+    var n = parseFloat(val);
 
-    if (!isNaN(n))
-      return (n);
-
-    val = $.trim(val);
+    if (!isNaN(n) && String(n) == val)
+      return n;
 
     if (val.indexOf("\"") == 0 && val.lastIndexOf("\"") == val.length - 1)
       val = val.substr(1, val.length - 2);
     else if (val.indexOf("'") == 0 && val.lastIndexOf("'") == val.length - 1)
       val = val.substr(1, val.length - 2);
 
-    return (val)
+    return val;
   }
 
   /***************************************************************************************/
@@ -1614,6 +1620,25 @@ _cheetah.ViewModel = function(vm, div)
   }
 }
 
+  /*****************************************************************************/
+  _cheetah.ViewModel.prototype.FixModel = function(model)
+  {
+    if(!model.$$id)
+    {
+      if(model.$$parent && model.$$path)
+      {
+        var parentModel = this.FixModel(model.$$parent);
+
+        model = ch.GetModelValue(parentModel, model.$$path);
+      }
+
+      if(!model.$$id)
+        model.$$Id = this.ModelID++;
+    }
+
+    return model;
+  }
+    
   /*****************************************************************************/
   _cheetah.ViewModel.prototype.GetContainer = function()
   {  
@@ -4836,10 +4861,13 @@ _cheetah.Property = function(prop, model)
   }
 
   /*****************************************************************************/
-  this.GetValue = function() 
+  this.GetValue = function(model) 
   {
     if(_prop == "__expr__")
         return _prop;
+
+    if(model)
+      _model = model;
 
     return ch.GetModelValue(_model, _prop);
   }
@@ -4926,7 +4954,10 @@ _cheetah.PropertyWatcher = function(vm, context)
   {
     context.TransformMethod("SetValue", function(transform)
     {
-      var val = _bind.GetValue();
+      if(!context.Model.$$id)
+        context.Model = vm.FixModel(context.Model);
+
+      var val = _bind.GetValue(context.Model);
 
       if(context.Format)
         val = ch.Evaluate(context.Format, null, {$$value: val});
