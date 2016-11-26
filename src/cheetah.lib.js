@@ -417,7 +417,7 @@ Cheetah.DOMBuilder = function()
       return element.checked;
 
     if(element.localName == "select")
-      val = element.options[element.selectedIndex].value;
+      val = element.selectedIndex >= 0 ? element.options[element.selectedIndex].value : "";
     else
       val = element.value;
 

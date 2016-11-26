@@ -648,6 +648,16 @@ Date.prototype.AddDays = function(n)
 }
 
 /***************************************************************************************/
+Date.prototype.AddHours = function(n) 
+{
+  var dt = new Date(this.getTime());
+
+  dt.setHours(dt.getHours() + n);
+
+  return dt;
+}
+
+/***************************************************************************************/
 Date.prototype.AddMinutes = function(n) 
 {
   var dt = new Date(this.getTime());
@@ -660,10 +670,12 @@ Date.prototype.AddMinutes = function(n)
 /***************************************************************************************/
 Date.prototype.WithinRange = function(dt1, dt2) 
 {
-  if(this.DateOnly() < dt2.DateOnly())
+  var dtThis = this.DateOnly();
+
+  if(dtThis < dt1.DateOnly())
     return false;
 
-  if(this.DateOnly() > dt2.DateOnly().AddDays(1))
+  if(dtThis > dt2.DateOnly().AddDays(1))
     return false;
 
   return true;
