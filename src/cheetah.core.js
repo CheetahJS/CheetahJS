@@ -925,7 +925,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
   /*****************************************************************************/
   _cheetah.Element.prototype.SetVar = function(name, val)
   {
-    this.Variables[name] = val;
+    this.Variables[name] = ch.Convert(val);
   }
 
   /*****************************************************************************/
@@ -1778,11 +1778,14 @@ _cheetah.BindElement = function(vm, parentElement, element, model, noWatch)
       return this.Bind.Eval(this, this.Model);
 
     var oldBind = this.Bind;
+    var model   = this.ViewModel.FixModel(this.Model);
 
-    this.Bind = ch.GetModelValue(this.Model, this.BindPath, this);
+    this.Bind = ch.GetModelValue(model, this.BindPath, this);
 
     if(!this.Bind)
-      Cheetah.Logger.Error("Bind value is null");
+    {
+      //Cheetah.Logger.Error("Bind value is null");
+    }
     else
       this.Bind.$$path = this.BindPath;
 
@@ -2863,12 +2866,14 @@ _cheetah.Action = function(vm, context, element, parent)
 
         this.SetActionStep(context, childNode, function(evt) 
         {
-          if(fn(evt) && !isAction && childAction)
+          var result = fn(evt);
+
+          if(result && !isAction && childAction)
           {
             evt.$callback = null;
             return childAction.Run(evt, true);
           }
-          return false;
+          return result;
         });
 
         break;
@@ -3788,16 +3793,19 @@ _cheetah.BindWatcher = function(context)
   /*****************************************************************************/
   function ForceRedraw(context)
   {
-    context.Children.ForEach
-    (
-      function(child)
-      {
-        if(context.Model && context.Model.$$id)
-          delete context.Model.$$id;
+    if(context.Children)
+    {
+      context.Children.ForEach
+      (
+        function(child)
+        {
+          if(context.Model && context.Model.$$id)
+            delete context.Model.$$id;
 
-        ForceRedraw(child);
-      }
-    );
+          ForceRedraw(child);
+        }
+      );
+    }
   }
 
   /*****************************************************************************/
@@ -3806,6 +3814,41 @@ _cheetah.BindWatcher = function(context)
     if(this.ModelChanged())
       this.ReRender(_model);
   }
+}
+
+/*****************************************************************************/
+/*****************************************************************************/
+function HasArrayChanged(newArray, oldArray)
+{
+  if(!newArray.$$parent || !newArray.$$id || !newArray.$$path)
+    return true;
+
+  if(oldArray)
+  {
+    if(oldArray.length != newArray.length)
+      return true;
+
+    if(oldArray.$$id != newArray.$$id)
+      return true;
+
+    if(oldArray.$$path != newArray.$$path)
+      return true;
+  }
+
+  var len = newArray.length;
+
+  for(var i = len-1; i >= 0; --i)
+  {
+    var child = newArray[i];
+
+    if(!child.$$parent || !child.$$id)
+      return true;
+
+    if(child.$$index != i)
+      return true;
+  }
+
+  return false;
 }
 
 /*****************************************************************************/
@@ -3814,80 +3857,38 @@ _cheetah.BindArrayWatcher = function(context)
 {
   _cheetah.ModelWatcher.call(this, context.ViewModel, context);
 
-  var _vm        = context.ViewModel;
-  var _rendered  = false;
-  var _model     = CloneModel(context.EvaluateBind());
+  var _model = context.EvaluateBind();
+  var _len   = _model.length;
 
-  this.BaseReRender = this.ReRender;
-  this.BaseModelChanged = this.ModelChanged;
+  /*****************************************************************************/
+  this.FixArray = function(newModel, oldModel, sort)
+  {  
+    if(sort || newModel.length > _len || !newModel.$$parent || !newModel.$$id)
+    {
+      if(this.Context.Sort)
+        ch.Sort(newModel, ch.Evaluate(this.Context.Sort));
+    }
 
+    _len = newModel.length;
+
+    newModel.$$parent = this.Context.Model;
+    newModel.$$path   = this.Context.BindPath;
+
+    return newModel;
+  }
+  
   /*****************************************************************************/
   this.ModelChanged = function()
   {
-    _rendered = false;
-
-    var newModel = {};
-    var oldModel = _model;
-
     var checkModel = this.Context.EvaluateBind();
 
-    if(checkModel)
+    if(_len != _model.length || checkModel && HasArrayChanged(checkModel, _model))
     {
-      checkModel.$$parent = this.Context.Model;
-
-      if(oldModel)
-        checkModel.$$path = oldModel.$$path;
-
-      if(checkModel.length != oldModel.length)
-      {
-        _model = CloneModel(checkModel);
-        return true;
-      }
-    }
-
-    if(this.BaseModelChanged(checkModel, newModel))
-    {
-      _model = CloneModel(checkModel);
-      return(true);
-    }
-
-    if(_rendered)
-      return(false);
-
-    checkModel = newModel.Model;
-
-    var index = 0;
-    var changed = false;
-
-    // Sort the list if requested
-    if(ch.IsValid(this.Context.Sort))
-      ch.Sort(checkModel, ch.Evaluate(this.Context.Sort));
-
-    // See if any new items in list, removed items or reordered items
-    checkModel.ForEach( function(item)
-    {
-      if(!ch.IsValid(item.$$index) || item.$$index != index++)
-      {
-        changed = true;
-        return false;
-      }
-
+      _model = this.FixArray(checkModel, _model, true);
       return true;
-    }, 
-    true);
+    }
 
-    if(changed)
-      _model = CloneModel(checkModel);
-
-    return changed;
-  }
-
-   /*****************************************************************************/
-  this.ReRender = function(model, render, context, clear)
-  {
-    _rendered = true;
-
-    this.BaseReRender(model, render, context, clear);
+    return false;
   }
 
   /*****************************************************************************/
@@ -3898,7 +3899,7 @@ _cheetah.BindArrayWatcher = function(context)
   }
 }
 
- /*****************************************************************************/
+  /*****************************************************************************/
   function CloneModel(model, oldModel)
   {  
     var newModel = ch.ShallowClone(model);
