@@ -120,6 +120,32 @@ var SlideUpAnimation = new function()
 
 /***************************************************************************************/
 /***************************************************************************************/
+var SlideToggleAnimation = new function()
+{
+  this.Name          = "slidetoggle";
+  this.AllowChildren = true;
+  this.IsAnimation   = true;
+
+  /***************************************************************************************/
+  this.ProcessAttributes = function(attrList)
+  {
+    return InitAnimation(attrList);
+  }
+
+  /***************************************************************************************/
+  this.Run = function(evt, target, vm, params, fnDone)
+  {
+    RunAnimation(evt, target, params, function($q)
+    {
+      $q.slideToggle(params.Speed, fnDone);
+    });
+  }
+
+  Cheetah.RegisterActionStep(this);
+}
+
+/***************************************************************************************/
+/***************************************************************************************/
 var AnimateAnimation = new function()
 {
   this.Name          = "animate";

@@ -328,7 +328,7 @@ var ch = new function ()
   /***************************************************************************************/
   function _Format(fmt, val, index)
   {
-    return (fmt.replace("{" + index + "}", val));
+    return fmt.replace("{" + index + "}", val);
   }
 
   /***************************************************************************************/
@@ -343,13 +343,13 @@ var ch = new function ()
     if (obj.length != undefined)
       return (obj.length == 0);
 
-    return (false);
+    return false;
   }
 
   /***************************************************************************************/
   this.IsValidNumber = function (n)
   {
-    return (ch.IsValid(n) && !isNaN(n))
+    return ch.IsValid(n) && !isNaN(n);
   }
 
   /***************************************************************************************/
@@ -462,19 +462,19 @@ var ch = new function ()
   /***************************************************************************************/
   this.IsNonZero = function (n)
   {
-    return (ch.IsValidNumber(n) && n != 0);
+    return ch.IsValidNumber(n) && n != 0;
   }
 
   /***************************************************************************************/
   this.IsZero = function (n)
   {
-    return (!ch.IsValidNumber(n) || n == 0);
+    return !ch.IsValidNumber(n) || n == 0;
   }
 
   /***************************************************************************************/
   this.Coalesce = function (v1, v2, v3, v4)
   {
-    return (ch.IsValid(v1) ? v1 : (ch.IsValid(v2) ? v2 : (ch.IsValid(v3) ? v3 : v4)));
+    return ch.IsValid(v1) ? v1 : (ch.IsValid(v2) ? v2 : (ch.IsValid(v3) ? v3 : v4));
   }
 
   /***************************************************************************************/
@@ -489,9 +489,9 @@ var ch = new function ()
     var name = elem.localName;
 
     if (name == "select")
-      return (elem.options[elem.selectedIndex].value);
+      return elem.options[elem.selectedIndex].value;
 
-    return (elem.value);
+    return elem.value;
   }
 
   /***************************************************************************************/
@@ -517,7 +517,7 @@ var ch = new function ()
   }
 
   /***************************************************************************************/
-  this.Do = function (fn)
+  this.Do = function(fn)
   {
     if(fn)
       fn();
@@ -527,7 +527,7 @@ var ch = new function ()
   this.AttributeValue = function (element, name, required)
   {
     if (!element)
-      return (null);
+      return null;
 
     if (element.attributes)
     {
@@ -536,7 +536,7 @@ var ch = new function ()
       if (required && (!attr || ch.IsEmpty(attr.value)))
       {
         LogError("Missing '" + name + "' attribute for '" + element.localName + "' element");
-        return (null);
+        return null;
       }
 
       if(attr)
@@ -550,16 +550,16 @@ var ch = new function ()
         return $.trim(found.Value);
     }
 
-    return (null);
+    return null;
   }
 
   /***************************************************************************************/
   this.NormalizeText = function (obj)
   {
-    if (!ch.IsValid(obj))
-      return ("");
+    if(obj == undefined || obj == null)
+      return "";
 
-    return (obj);
+    return String(obj);
   }
 
   /*****************************************************************************/
@@ -570,7 +570,7 @@ var ch = new function ()
       return (item.localName == name);
     });
 
-    return (found == null ? (defaultVal != undefined ? defaultVal : "") : found.value);
+    return found == null ? (defaultVal != undefined ? defaultVal : "") : found.value;
   }
 
   /*****************************************************************************/
@@ -592,10 +592,10 @@ var ch = new function ()
         var r = c[i].Run(a, b);
 
         if (r != 0)
-          return (r);
+          return r;
       }
 
-      return (0);
+      return 0;
     });
 
     /*****************************************************************************/
@@ -633,13 +633,13 @@ var ch = new function ()
         var more = this.Asc ? 1 : -1;
 
         if (!ch.IsValid(val1) && !ch.IsValid(val2))
-          return (0);
+          return 0;
 
         if (!ch.IsValid(val1))
-          return (less);
+          return less;
 
         if (!ch.IsValid(val2))
-          return (more);
+          return more;
 
         if (this.Num)
         {
@@ -648,9 +648,9 @@ var ch = new function ()
         }
 
         if (val1 == val2)
-          return (0);
+          return 0;
 
-        return (val1 < val2 ? less : more);
+        return val1 < val2 ? less : more;
       }
     }
   }

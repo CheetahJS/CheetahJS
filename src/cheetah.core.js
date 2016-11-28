@@ -2620,19 +2620,28 @@ _cheetah.Action = function(vm, context, element, parent)
   /*****************************************************************************/
   _cheetah.Action.prototype.EvalClassSetter = function(context, childNode)
   {
-    var sel = ch.AttributeValue(childNode, "select");
-    var add = ch.AttributeValue(childNode, "add");
-    var rem = ch.AttributeValue(childNode, "remove");
+    var sel    = ch.AttributeValue(childNode, "select");
+    var add    = ch.AttributeValue(childNode, "add");
+    var rem    = ch.AttributeValue(childNode, "remove");
+    var toggle = ch.AttributeValue(childNode, "toggle");
 
     this.SetActionStep(context, childNode, function(evt) 
     {
       var $target = ch.SelectTarget(evt, sel);
 
-      if(!ch.IsEmpty(rem))
+      if(rem)
         $target.removeClass(rem);
 
-      if(!ch.IsEmpty(add))
+      if(add)
         $target.addClass(add);
+
+      if(toggle)
+      {
+        if(!$target.hasClass(toggle))
+          $target.addClass(toggle);
+        else
+          $target.removeClass(toggle);
+      }
 
       return false;
     });

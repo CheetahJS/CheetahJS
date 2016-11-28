@@ -1,4 +1,17 @@
-﻿///#source 1 1 /scripts/cheetah.ch.js
+﻿/*****************************************************************************/
+/*                                                                           */
+/*    CheetahJS - "Because it's fast!"                                       */
+/*                                                                           */
+/*       An MVVM Javascript Library for fast web development                 */
+/*                                                                           */
+/*   Copyright (c) 2015-2016 - Jim Lightfoot                                 */
+/*                                                                           */
+/*      This software is available under the MIT license (MIT)               */
+/*                                                                           */
+/*           https://github.com/CheetahJS/CheetahJS/blob/master/LICENSE      */
+/*                                                                           */
+/*****************************************************************************/
+///#source 1 1 /scripts/cheetah.ch.js
 "use strict";
 
 /***************************************************************************************/
@@ -329,7 +342,7 @@ var ch = new function ()
   /***************************************************************************************/
   function _Format(fmt, val, index)
   {
-    return (fmt.replace("{" + index + "}", val));
+    return fmt.replace("{" + index + "}", val);
   }
 
   /***************************************************************************************/
@@ -344,13 +357,13 @@ var ch = new function ()
     if (obj.length != undefined)
       return (obj.length == 0);
 
-    return (false);
+    return false;
   }
 
   /***************************************************************************************/
   this.IsValidNumber = function (n)
   {
-    return (ch.IsValid(n) && !isNaN(n))
+    return ch.IsValid(n) && !isNaN(n);
   }
 
   /***************************************************************************************/
@@ -463,19 +476,19 @@ var ch = new function ()
   /***************************************************************************************/
   this.IsNonZero = function (n)
   {
-    return (ch.IsValidNumber(n) && n != 0);
+    return ch.IsValidNumber(n) && n != 0;
   }
 
   /***************************************************************************************/
   this.IsZero = function (n)
   {
-    return (!ch.IsValidNumber(n) || n == 0);
+    return !ch.IsValidNumber(n) || n == 0;
   }
 
   /***************************************************************************************/
   this.Coalesce = function (v1, v2, v3, v4)
   {
-    return (ch.IsValid(v1) ? v1 : (ch.IsValid(v2) ? v2 : (ch.IsValid(v3) ? v3 : v4)));
+    return ch.IsValid(v1) ? v1 : (ch.IsValid(v2) ? v2 : (ch.IsValid(v3) ? v3 : v4));
   }
 
   /***************************************************************************************/
@@ -490,9 +503,9 @@ var ch = new function ()
     var name = elem.localName;
 
     if (name == "select")
-      return (elem.options[elem.selectedIndex].value);
+      return elem.options[elem.selectedIndex].value;
 
-    return (elem.value);
+    return elem.value;
   }
 
   /***************************************************************************************/
@@ -518,7 +531,7 @@ var ch = new function ()
   }
 
   /***************************************************************************************/
-  this.Do = function (fn)
+  this.Do = function(fn)
   {
     if(fn)
       fn();
@@ -528,7 +541,7 @@ var ch = new function ()
   this.AttributeValue = function (element, name, required)
   {
     if (!element)
-      return (null);
+      return null;
 
     if (element.attributes)
     {
@@ -537,7 +550,7 @@ var ch = new function ()
       if (required && (!attr || ch.IsEmpty(attr.value)))
       {
         LogError("Missing '" + name + "' attribute for '" + element.localName + "' element");
-        return (null);
+        return null;
       }
 
       if(attr)
@@ -551,16 +564,16 @@ var ch = new function ()
         return $.trim(found.Value);
     }
 
-    return (null);
+    return null;
   }
 
   /***************************************************************************************/
   this.NormalizeText = function (obj)
   {
-    if (!ch.IsValid(obj))
-      return ("");
+    if(obj == undefined || obj == null)
+      return "";
 
-    return (obj);
+    return String(obj);
   }
 
   /*****************************************************************************/
@@ -571,7 +584,7 @@ var ch = new function ()
       return (item.localName == name);
     });
 
-    return (found == null ? (defaultVal != undefined ? defaultVal : "") : found.value);
+    return found == null ? (defaultVal != undefined ? defaultVal : "") : found.value;
   }
 
   /*****************************************************************************/
@@ -593,10 +606,10 @@ var ch = new function ()
         var r = c[i].Run(a, b);
 
         if (r != 0)
-          return (r);
+          return r;
       }
 
-      return (0);
+      return 0;
     });
 
     /*****************************************************************************/
@@ -634,13 +647,13 @@ var ch = new function ()
         var more = this.Asc ? 1 : -1;
 
         if (!ch.IsValid(val1) && !ch.IsValid(val2))
-          return (0);
+          return 0;
 
         if (!ch.IsValid(val1))
-          return (less);
+          return less;
 
         if (!ch.IsValid(val2))
-          return (more);
+          return more;
 
         if (this.Num)
         {
@@ -649,9 +662,9 @@ var ch = new function ()
         }
 
         if (val1 == val2)
-          return (0);
+          return 0;
 
-        return (val1 < val2 ? less : more);
+        return val1 < val2 ? less : more;
       }
     }
   }
@@ -4046,19 +4059,28 @@ _cheetah.Action = function(vm, context, element, parent)
   /*****************************************************************************/
   _cheetah.Action.prototype.EvalClassSetter = function(context, childNode)
   {
-    var sel = ch.AttributeValue(childNode, "select");
-    var add = ch.AttributeValue(childNode, "add");
-    var rem = ch.AttributeValue(childNode, "remove");
+    var sel    = ch.AttributeValue(childNode, "select");
+    var add    = ch.AttributeValue(childNode, "add");
+    var rem    = ch.AttributeValue(childNode, "remove");
+    var toggle = ch.AttributeValue(childNode, "toggle");
 
     this.SetActionStep(context, childNode, function(evt) 
     {
       var $target = ch.SelectTarget(evt, sel);
 
-      if(!ch.IsEmpty(rem))
+      if(rem)
         $target.removeClass(rem);
 
-      if(!ch.IsEmpty(add))
+      if(add)
         $target.addClass(add);
+
+      if(toggle)
+      {
+        if(!$target.hasClass(toggle))
+          $target.addClass(toggle);
+        else
+          $target.removeClass(toggle);
+      }
 
       return false;
     });
@@ -7828,6 +7850,32 @@ var SlideUpAnimation = new function()
     RunAnimation(evt, target, params, function($q)
     {
       $q.slideUp(params.Speed, fnDone);
+    });
+  }
+
+  Cheetah.RegisterActionStep(this);
+}
+
+/***************************************************************************************/
+/***************************************************************************************/
+var SlideToggleAnimation = new function()
+{
+  this.Name          = "slidetoggle";
+  this.AllowChildren = true;
+  this.IsAnimation   = true;
+
+  /***************************************************************************************/
+  this.ProcessAttributes = function(attrList)
+  {
+    return InitAnimation(attrList);
+  }
+
+  /***************************************************************************************/
+  this.Run = function(evt, target, vm, params, fnDone)
+  {
+    RunAnimation(evt, target, params, function($q)
+    {
+      $q.slideToggle(params.Speed, fnDone);
     });
   }
 
