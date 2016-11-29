@@ -931,7 +931,8 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
   /*****************************************************************************/
   _cheetah.Element.prototype.CheckTemplateTransform = function(elem, params)
   {
-    var transform = _cheetah.Transforms[params.name];
+    var transformName = params.name;
+    var transform     = _cheetah.Transforms[transformName];
 
     if(transform && transform.UseTemplate)
     {
@@ -944,6 +945,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
         this.Builder.SetAttribute(elem, "bind", bind);
             
       this.Builder.SetAttribute(elem, "name", transform.UseTemplate);
+      this.Builder.SetAttribute(elem, "data-transform", transformName);
     }
   }
 
@@ -1670,6 +1672,36 @@ _cheetah.CallTemplate = function(vm, parentElement, elem, model, name)
     return;
   }
 
+  var transformName = $(elem).data("transform");
+
+  if(transformName)
+  {
+    this.Transform = _cheetah.Transforms[transformName];
+
+    if(this.Transform)
+    {
+      if(this.Transform.CreateInstance)
+        this.TransformInstance = this.Transform.CreateInstance();
+
+      var self = this;
+
+      if((this.TransformInstance && this.TransformInstance.OnRender) || this.Transform.OnRender)
+      {
+        this.OnRender = function()
+        {
+          if(self.Children.length > 0)
+          {
+            var child = self.Children[0];
+
+            child.Transform = self.Transform;
+            child.TransformInstance = self.TransformInstance;
+            child.TransformOnRender();
+          }
+        }
+      }
+    }
+  }
+
   this.Element = templateRef.GetTemplate(vm);
 
   var self = this;
@@ -2202,6 +2234,7 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
 
             case "click":
             case "blur":
+            case "focus":
             case "mouseover":
             case "mouseenter":
             case "mouseleave":
