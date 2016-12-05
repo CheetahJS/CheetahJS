@@ -2425,6 +2425,9 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
         case "ch-bind":
           return new _cheetah.BindElement(vm, this, elem, this.Model, noWatch);
 
+        case "ch-foreach":
+          return new _cheetah.BindElement(vm, this, elem, this.Model, noWatch, true);
+
         case "ch-if":
           this.LastIf = new _cheetah.IfElement(vm, this, elem, this.Model);
           return this.LastIf;
@@ -3189,31 +3192,51 @@ _cheetah.TemplateContents = function(vm, parentElement, elem, model)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.BindElement = function(vm, parentElement, element, model, noWatch)
+_cheetah.BindElement = function(vm, parentElement, element, model, noWatch, array)
 {
   _cheetah.CheetahElement.call(this, vm, parentElement, element, model);
 
-  this.BindPath         = ch.AttributeValue(this.Element, "on", true);
+  this.BindPath         = ch.AttributeValue(this.Element, array ? "select" : "on", true);
   this.Bind             = this.BindPath;
   this.IsCheetahElement = true;
 
   if(ch.IsEmpty(this.Bind))
-    throw "Missing 'on' attribute for ch-bind";
+  {
+    if(array)
+      throw "Missing 'select' attribute for ch-foreach";
+    else
+      throw "Missing 'on' attribute for ch-bind";
+  }
 
   var shouldWatch = false;
-  var array = true;
+
+  if(array == undefined)
+  {
+    array = ch.AttributeValue(this.Element, "isArray");
+
+    if(array == "true" || array == "false")
+      array = array == "true";
+    else
+      array = undefined;
+  }
 
   if(Cheetah.IsExpressionText(this.Bind))
   {
     this.Bind = this.ViewModel.CreateExpression(this.Bind);
     shouldWatch = true;
+
+    if(array == undefined)
+    {
+      if(Array.isArray(this.Bind.Eval(this, this.Model)))
+        array = true;
+    }
   }
   else
   {
     this.Bind = ch.GetModelValue(this.Model, this.Bind, this);
 
-    if(!Array.isArray(this.Bind))
-      array = false;
+    if(array == undefined)
+      array = Array.isArray(this.Bind);
 
     shouldWatch = true;
   }
@@ -3239,25 +3262,14 @@ _cheetah.BindElement = function(vm, parentElement, element, model, noWatch)
   /*****************************************************************************/
   _cheetah.BindElement.prototype.EvaluateBind = function()
   {    
-    if(!this.Bind)
-    {
-      //Cheetah.Logger.Error("Bind value is null");
-      return null;
-    }
-
-    if(this.Bind.Eval)
+    if(this.Bind && this.Bind.Eval)
       return this.Bind.Eval(this, this.Model);
 
-    var oldBind = this.Bind;
-    var model   = this.ViewModel.FixModel(this.Model);
+    var model = this.ViewModel.FixModel(this.Model);
 
     this.Bind = ch.GetModelValue(model, this.BindPath, this);
 
-    if(!this.Bind)
-    {
-      //Cheetah.Logger.Error("Bind value is null");
-    }
-    else
+    if(this.Bind)
       this.Bind.$$path = this.BindPath;
 
     return this.Bind;
@@ -4402,6 +4414,7 @@ _cheetah.Action = function(vm, context, element, parent)
       case "writeconsole":
       {
         var txt = $.trim(childNode.innerHTML);
+        var type  = ch.AttributeValue(childNode, "type");
 
         txt = context.EvaluateText(this.ViewModel, txt);
 
@@ -4412,7 +4425,23 @@ _cheetah.Action = function(vm, context, element, parent)
           if(evt.$$result)
             injected.$$result = evt.$$result;
 
-          Cheetah.Logger.Error(ch.Evaluate(txt, null, injected));           
+          var msg = ch.Evaluate(txt, null, injected);
+
+          switch(type)
+          {
+            case "error":
+              Cheetah.Logger.Error(msg);           
+              break;
+            case "warning":
+              Cheetah.Logger.Warning(msg);           
+              break;
+            case "info":
+              Cheetah.Logger.Info(msg);           
+              break;
+            default:
+              Cheetah.Logger.Log(msg);           
+              break;
+          }
         });
 
         break;
@@ -5339,10 +5368,10 @@ _cheetah.BindArrayWatcher = function(context)
   _cheetah.ModelWatcher.call(this, context.ViewModel, context);
 
   var _model = context.EvaluateBind();
-  var _len   = _model.length;
+  var _len   = _model ? _model.length : 0;
 
   /*****************************************************************************/
-  this.FixArray = function(newModel, oldModel, sort)
+  this.FixArray = function(newModel, sort)
   {  
     if(sort || newModel.length > _len || !newModel.$$parent || !newModel.$$id)
     {
@@ -5363,9 +5392,9 @@ _cheetah.BindArrayWatcher = function(context)
   {
     var checkModel = this.Context.EvaluateBind();
 
-    if(_len != _model.length || checkModel && HasArrayChanged(checkModel, _model))
+    if(!_model || _len != _model.length || checkModel && HasArrayChanged(checkModel, _model))
     {
-      _model = this.FixArray(checkModel, _model, true);
+      _model = this.FixArray(checkModel, true);
       return true;
     }
 
@@ -5452,6 +5481,7 @@ _cheetah.TextExpression = function(vm, context, text)
   this.OriginalText   = text;
   this.Parts          = [];
   this.Expressions    = [];
+  this.HasFunctions   = false;
 
   this.Init(text);
 }
@@ -5473,6 +5503,9 @@ _cheetah.TextExpression = function(vm, context, text)
       {
         if(typeof part == "string")  
           return(str + part);
+
+        if(part.HasFunctions)
+          self.HasFunctions = true;
 
         return(str + ch.NormalizeText(part.Eval(self.Context, model, injected)))
       },          
@@ -5524,12 +5557,19 @@ _cheetah.TextExpressionWatcher = function(vm, context, texpr, index)
 {
   _cheetah.ModelWatcher.call(this, vm, context);
 
-  var _expression = (typeof texpr == "string") ? new _cheetah.TextExpression(vm, context, texpr) : texpr;
+  var _expression   = texpr;
+  var _hasFunctions = false;
+
+  if(typeof texpr == "string")
+  {
+    _expression   = new _cheetah.TextExpression(vm, context, texpr);
+    _hasFunctions = _expression.HasFunctions;
+  }
 
   /*****************************************************************************/
   this.Eval = function(vm, force)
   {
-    if(force || this.ModelChanged())
+    if(force || _hasFunctions || this.ModelChanged())
       this.Resolve( _expression.Evaluate());
   }
 
@@ -6035,7 +6075,7 @@ Cheetah.Service = function()
     if(verb == "POST" || verb == "GET")
       this.Query(this.NormalizeUrl(url, folder), verb, params, callback, err_callback);
     else
-      Cheetah.Logger.Error("Only 'POST' or 'GET' for Cheetah.Service." + name);
+      Cheetah.Logger.Error("Only 'POST' or 'GET' is allowed for Cheetah.Service." + name);
   }
 
   /***************************************************************************************/
@@ -6093,7 +6133,9 @@ Cheetah.Service = function()
                 (
                   function(jqXHR, textStatus, errorThrown)
                   {
-                    if(errorThrown == "Not Found")
+                    if(jqXHR.responseJSON)
+                      errorThrown = jqXHR.responseJSON;
+                    else if(errorThrown == "Not Found")
                       errorThrown += ": " + url;
 
                     self.OnError(errorThrown, err_callback);
@@ -6903,6 +6945,12 @@ Cheetah.ConsoleLogger = function()
   }
 
   /*****************************************************************************/  
+  Cheetah.ConsoleLogger.prototype.Info = function(msg)
+  {
+    console.info("CheetahJS: " + msg);
+  }
+
+  /*****************************************************************************/  
   Cheetah.ConsoleLogger.prototype.Log = function(msg)
   {
     console.log("CheetahJS: " + msg);
@@ -7369,6 +7417,7 @@ Cheetah.DOMStringBuilder = function()
     var _vm          = vm;
     var _expression  = expression;
 
+    this.HasFunctions = false;
     this.ModelTokens = [];
     this.VarTokens   = [];
 
@@ -7412,7 +7461,11 @@ Cheetah.DOMStringBuilder = function()
       var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1, $$scope: 1});
 
       if(expr.indexOf("return") == 0)
+      {
         _fn = new Function("__vm", "__model", "__injected", "__ec", expr);
+
+        this.HasFunctions = this.ModelTokens.Contains( function(i) { return i == "__expr__"; } );
+      }
       else
       {
         _fn = expr;
@@ -7646,11 +7699,6 @@ Cheetah.DOMStringBuilder = function()
           }
 
           output.push(fn + ") { return ");
-        }
-        else if(token == "(" || token == "[")
-        {
-          output.push(token);
-          delimiterStack.push(token);
         }
         else if(token == "]")
         {

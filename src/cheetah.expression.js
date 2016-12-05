@@ -54,6 +54,7 @@
     var _vm          = vm;
     var _expression  = expression;
 
+    this.HasFunctions = false;
     this.ModelTokens = [];
     this.VarTokens   = [];
 
@@ -97,7 +98,11 @@
       var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1, $$scope: 1});
 
       if(expr.indexOf("return") == 0)
+      {
         _fn = new Function("__vm", "__model", "__injected", "__ec", expr);
+
+        this.HasFunctions = this.ModelTokens.Contains( function(i) { return i == "__expr__"; } );
+      }
       else
       {
         _fn = expr;
@@ -331,11 +336,6 @@
           }
 
           output.push(fn + ") { return ");
-        }
-        else if(token == "(" || token == "[")
-        {
-          output.push(token);
-          delimiterStack.push(token);
         }
         else if(token == "]")
         {

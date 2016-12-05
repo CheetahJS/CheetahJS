@@ -397,6 +397,12 @@ Cheetah.ConsoleLogger = function()
   }
 
   /*****************************************************************************/  
+  Cheetah.ConsoleLogger.prototype.Info = function(msg)
+  {
+    console.info("CheetahJS: " + msg);
+  }
+
+  /*****************************************************************************/  
   Cheetah.ConsoleLogger.prototype.Log = function(msg)
   {
     console.log("CheetahJS: " + msg);
