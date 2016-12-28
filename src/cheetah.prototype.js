@@ -487,10 +487,30 @@ Array.prototype.IfAll = function(fn)
 /***************************************************************************************/
 String.prototype.FirstInList = function(separator) 
 {
-  if(!separator || this.indexOf(separator) == -1)
+  if(!separator)
     return this;
 
-  return this.substr(0, this.indexOf(separator));
+  var ndx = this.indexOf(separator);
+
+  if(ndx == -1)
+    return this;
+
+  return this.substr(0, ndx).trim();
+}
+
+/***************************************************************************************/
+String.prototype.IsInList = function(slist, separator) 
+{
+  if(!slist)
+    return false;
+
+  var list = slist.split(separator);  
+  var self = this;
+
+  return list.Contains( function(item)
+  {
+    return item == self;
+  });
 }
 
 /***************************************************************************************/
@@ -513,25 +533,51 @@ String.prototype.NthInList = function(n, separator)
 
   var list = this.split(separator);
 
-  return list[n];
+  return list[n].trim();
 }
 
 /***************************************************************************************/
-String.prototype.EndsWith = function(strSearch) 
+String.prototype.LeftPart = function(separator) 
 {
-    if(strSearch == undefined || strSearch == null)
-      return(false);
+  return this.FirstInList(separator);
+}
 
-    if(this == undefined || this == null)
-      return(false);
+/***************************************************************************************/
+String.prototype.RightPart = function(separator) 
+{
+  if(!separator)
+    return this;
+
+  var ndx = this.lastIndexOf(separator);
+
+  if(ndx == -1)
+    return this;
+
+  return this.substr(ndx + separator.length).trim();
+}
+
+/***************************************************************************************/
+String.prototype.StartsWith = function(search) 
+{
+    if(!search)
+      return false;
+
+    return(this.indexOf(search) == 0);
+}
+
+/***************************************************************************************/
+String.prototype.EndsWith = function(search) 
+{
+    if(!search)
+      return false;
 
     var thisLen = this.length;
-    var srchLen = strSearch.length;
+    var srchLen = search.length;
 
     if(thisLen < srchLen)
-      return(false);
+      return false;
 
-    return(this.lastIndexOf(strSearch) == (thisLen - srchLen));
+    return this.lastIndexOf(search) == (thisLen - srchLen);
 }
 
 /***************************************************************************************/

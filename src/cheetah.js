@@ -403,6 +403,46 @@ var ch = new function ()
   }
 
   /***************************************************************************************/
+  this.Clear = function(obj)
+  {
+    for(var name in obj)
+    {
+      if(name.StartsWith("$$"))
+      {
+        delete obj[name];
+        continue;
+      }
+
+      var objChild = obj[name];
+    
+      if(typeof objChild === "function")
+        continue;
+
+      if(typeof objChild === "object")
+        ch.Clear(objChild);
+
+      if(Array.isArray(objChild))
+        objChild.Clear();
+
+      delete obj[name];
+    }
+
+    return obj;
+  }
+
+  /***************************************************************************************/
+  this.Copy = function(val1, val2)
+  {
+    ch.Clear(val1);
+
+    for(var name in val2)
+      if(name.indexOf("$$") == -1)
+        val1[name] = val2[name];
+
+    return val1;
+  }
+
+  /***************************************************************************************/
   this.Clone = function (val, shallow, normalize)
   {
     if (!val || typeof val !== "object")
@@ -538,7 +578,13 @@ var ch = new function ()
   }
 
   /*****************************************************************************/
-  this.AttributeValue = function (element, name, required)
+  this.ConvertedAttributeValue = function (element, name, defaultVal)
+  {
+    return ch.Convert(ch.AttributeValue(element, name, false, defaultVal));
+  }
+
+  /*****************************************************************************/
+  this.AttributeValue = function (element, name, required, defaultVal)
   {
     if (!element)
       return null;
@@ -547,10 +593,15 @@ var ch = new function ()
     {
       var attr = element.attributes[name];
 
-      if (required && (!attr || ch.IsEmpty(attr.value)))
+      if((!attr || ch.IsEmpty(attr.value)))
       {
-        LogError("Missing '" + name + "' attribute for '" + element.localName + "' element");
-        return null;
+        if(required)
+        {
+          LogError("Missing '" + name + "' attribute for '" + element.localName + "' element");
+          return null;
+        }
+
+        return defaultVal;
       }
 
       if(attr)
@@ -1161,10 +1212,30 @@ Array.prototype.IfAll = function(fn)
 /***************************************************************************************/
 String.prototype.FirstInList = function(separator) 
 {
-  if(!separator || this.indexOf(separator) == -1)
+  if(!separator)
     return this;
 
-  return this.substr(0, this.indexOf(separator));
+  var ndx = this.indexOf(separator);
+
+  if(ndx == -1)
+    return this;
+
+  return this.substr(0, ndx).trim();
+}
+
+/***************************************************************************************/
+String.prototype.IsInList = function(slist, separator) 
+{
+  if(!slist)
+    return false;
+
+  var list = slist.split(separator);  
+  var self = this;
+
+  return list.Contains( function(item)
+  {
+    return item == self;
+  });
 }
 
 /***************************************************************************************/
@@ -1187,25 +1258,51 @@ String.prototype.NthInList = function(n, separator)
 
   var list = this.split(separator);
 
-  return list[n];
+  return list[n].trim();
 }
 
 /***************************************************************************************/
-String.prototype.EndsWith = function(strSearch) 
+String.prototype.LeftPart = function(separator) 
 {
-    if(strSearch == undefined || strSearch == null)
-      return(false);
+  return this.FirstInList(separator);
+}
 
-    if(this == undefined || this == null)
-      return(false);
+/***************************************************************************************/
+String.prototype.RightPart = function(separator) 
+{
+  if(!separator)
+    return this;
+
+  var ndx = this.lastIndexOf(separator);
+
+  if(ndx == -1)
+    return this;
+
+  return this.substr(ndx + separator.length).trim();
+}
+
+/***************************************************************************************/
+String.prototype.StartsWith = function(search) 
+{
+    if(!search)
+      return false;
+
+    return(this.indexOf(search) == 0);
+}
+
+/***************************************************************************************/
+String.prototype.EndsWith = function(search) 
+{
+    if(!search)
+      return false;
 
     var thisLen = this.length;
-    var srchLen = strSearch.length;
+    var srchLen = search.length;
 
     if(thisLen < srchLen)
-      return(false);
+      return false;
 
-    return(this.lastIndexOf(strSearch) == (thisLen - srchLen));
+    return this.lastIndexOf(search) == (thisLen - srchLen);
 }
 
 /***************************************************************************************/
@@ -2538,14 +2635,23 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
                              "'ch-else' statement does not follow a 'ch-if' or 'ch-elseif' statement",
                              "An element with a 'ch-else' attribute does not follow an element with a 'ch-if' or 'ch-elseif' attribute",
                              "An action with the name '{0}' was not found!",
-                             "Neither 'select' nor 'select-data' is specified for an action setter",
                              "'name' attribute missing on action setter",
                              "'select' attribute missing on action setter"
                            ];
       
   /*****************************************************************************/
-  _cheetah.LogError = function(n)
+  _cheetah.LogError = function(n, param1, param2)
   {
+    var msg = _cheetah.ErrorMessages[n];
+
+    if(param1)
+    {
+      msg = msg.replaceAll("{0}", param1);
+
+      if(param2)
+        msg = msg.replaceAll("{1}", param2);
+    }
+
     Cheetah.Logger.Error(_cheetah.ErrorMessages[n]);
   }
 
@@ -2566,7 +2672,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
       return action;
     }
 
-    Cheetah.Logger.Error(_cheetah.ErrorMessages[4].replace("{0}", name));
+    _cheetah.LogError(4, name);
     return(null);
   }
 
@@ -4007,21 +4113,10 @@ _cheetah.Action = function(vm, context, element, parent)
 
     if(ch.IsEmpty(data))
     {
-      var value = "";
+      var value = Cheetah.Builder.GetAttributeOrInnerHtml(childNode, "value");
 
-      if(ch.IsValid(childNode.attributes["value"]))
-        value = ch.AttributeValue(childNode, "value");
-      else
-        value = childNode.innerHTML;
-
-      if(!ch.IsValid(value))
-      {
-        _cheetah.LogError(5);
-        return;
-      }
-      
-      if(ch.IsEmpty(value))
-        value = "";
+      if(!value)
+        value = ""; 
 
       var vm        = this.ViewModel;
       var condition = CreateCondition(vm, childNode);
@@ -4058,7 +4153,7 @@ _cheetah.Action = function(vm, context, element, parent)
 
     if(ch.IsEmpty(name))
     {
-      _cheetah.LogError(6);
+      _cheetah.LogError(5);
       return;
     }
 
@@ -4077,7 +4172,7 @@ _cheetah.Action = function(vm, context, element, parent)
 
     if(ch.IsEmpty(sel))
     {
-      _cheetah.LogError(7);
+      _cheetah.LogError(6);
       return;
     }
    
@@ -4759,32 +4854,88 @@ _cheetah.ValidatorItem = function(vm, context, element)
 
 /*****************************************************************************/
 /*****************************************************************************/
-_cheetah.Validator = function(vm, context, element, parent)
+_cheetah.ValidateList = function(vm, context, element, action)
 {
-  var _vm           = vm;
-  var _context      = context;
-  var _reportSilent = ch.Convert(ch.AttributeValue(element, "report-silent"));
-  var _reportAll    = ch.Convert(ch.AttributeValue(element, "report-all"));
-  var _reportTo     = ch.AttributeValue(element, "report-to");
-  var _condition    = CreateCondition(vm, element);
-  var _childAction  = null;
-  var _failAction   = null;
-  var _items        = [];
+  var _vm        = vm;
+  var _select    = context.EvaluateText(vm, Cheetah.StartDelimiter + ch.AttributeValue(element, "select") + Cheetah.EndDelimiter);
+  var _context   = context;
+  var _validator = new _cheetah.Validator(vm, context, element, action, true);
 
-  this.IsValid = true;
+  this.IsValid = !ch.IsEmpty(_select);
+
+  /*****************************************************************************/
+  this.Validate = function(vm, evt, context, msgs, firstOnly) 
+  {
+    var list = ch.Evaluate(_select);  
+
+    if(!list || !Array.isArray(list))
+      return true;
+    
+    var isValid = true;
+
+    list.ForEach( function(item)
+    {
+      evt.$model = item;
+
+      if(!_validator.Validate(evt, msgs))
+      {
+        isValid = false;
+
+        if(!_validator.ReportAll)
+          return false;
+      }
+
+      return true;
+    },
+    true);
+
+    return isValid;
+  }
+}
+
+/*****************************************************************************/
+/*****************************************************************************/
+_cheetah.Validator = function(vm, context, element, parent, isChild)
+{
+  var _vm             = vm;
+  var _context        = context;
+  var _reportSilent   = ch.ConvertedAttributeValue(element, "report-silent", false);
+  var _reportTo       = ch.AttributeValue(element, "report-to");
+  var _reportToParent = ch.ConvertedAttributeValue(element, "report-to-parent", true);
+  var _condition      = CreateCondition(vm, element);
+  var _childAction    = null;
+  var _failAction     = null;
+  var _items          = [];
+  var _isChild        = isChild;
+
+  this.ReportAll      = ch.ConvertedAttributeValue(element, "report-all", true);
 
   /*****************************************************************************/
   {
+    this.IsValid = true;
+
+    if(!_isChild || _reportTo)
+      _reportToParent = false;
+
     element.childNodes.ForEach(function(childNode)
     {
       if(ch.IsValid(childNode.localName))
       {
         switch(childNode.localName.toLowerCase())
         {
-          // Model is only thing we know how to validate
           case "model":
           {
             var item = new _cheetah.ValidatorItem(vm, _context, childNode);
+
+            if(item.IsValid)
+              _items.push(item);
+
+            break;
+          }
+
+          case "validatelist":
+          {
+            var item = new _cheetah.ValidateList(vm, _context, childNode, parent);
 
             if(item.IsValid)
               _items.push(item);
@@ -4809,20 +4960,22 @@ _cheetah.Validator = function(vm, context, element, parent)
   }
 
   /*****************************************************************************/
-  this.Validate = function(evt) 
+  this.Validate = function(evt, msgs) 
   { 
     if(EvalCondition(_condition, evt, _context))
     {
-      var msgs = [];
+      msgs = _reportToParent && msgs ? msgs : [];
+
       var isValid = true;
+      var self = this;
 
       _items.ForEach( function(item)
       {
-        if(!item.Validate(_vm, evt, _context, msgs, !_reportAll))
+        if(!item.Validate(_vm.ActualViewModel, evt, _context, msgs, !self.ReportAll))
         {
           isValid = false;
 
-          if(!_reportAll)
+          if(!self.ReportAll)
             return false;
         }
 
@@ -4832,15 +4985,15 @@ _cheetah.Validator = function(vm, context, element, parent)
 
       if(!isValid)
       {
-        if(!_reportSilent)
+        if(!_reportSilent && !_reportToParent)
         {
           var msg = "Validation failed!";
   
           if(msgs.length > 0)
           {
-            if(_reportAll)
+            if(this.ReportAll)
             {
-              if(ch.IsEmpty(_reportTo))
+              if(!_reportTo)
                 msg = msgs.Pack("\r\n", function(item) {return item.Message;} );
               else
                 msg = "<ul>" + msgs.Pack("\r\n", 
@@ -4854,10 +5007,10 @@ _cheetah.Validator = function(vm, context, element, parent)
               msg = "<ul><li>" + msgs[0].Message + "</li></ul>";
           }
   
-          if(ch.IsEmpty(_reportTo))
+          if(!_reportTo)
             _vm.OnError(msg);
           else
-             $(_reportTo).html(msg);
+              $(_reportTo).html(msg);
         }
 
         if(_failAction)
@@ -4866,11 +5019,13 @@ _cheetah.Validator = function(vm, context, element, parent)
           _failAction.Run(evt);
         }
 
-        return;
+        return false;
       }
 
       if(_childAction != null)
         _childAction.Run(evt);
+
+      return true;
     }
   }
 }
@@ -5113,7 +5268,7 @@ _cheetah.ModelWatcher = function(vm, context)
   var _variables  = new Cheetah.KeyedSet();
 
   /*****************************************************************************/
-  this.ModelChanged = function(model, newModel, clear)
+  this.ModelChanged = function(model, newModel, clear, noReRender)
   {
     var context = this.Context;
 
@@ -5137,6 +5292,9 @@ _cheetah.ModelWatcher = function(vm, context)
         delete model.$$parent.$$id;
         return true;
       }
+
+      if(noReRender)
+        return true;
 
       this.ReRender(modelCompare, null, null, clear);
       return(false);
@@ -5373,6 +5531,9 @@ _cheetah.BindArrayWatcher = function(context)
   /*****************************************************************************/
   this.FixArray = function(newModel, sort)
   {  
+    if(!newModel)
+      return;
+
     if(sort || newModel.length > _len || !newModel.$$parent || !newModel.$$id)
     {
       if(this.Context.Sort)
@@ -5647,7 +5808,7 @@ _cheetah.ClassWatcher = function(vm, context, expr)
   /*****************************************************************************/
   this.Eval = function(vm, force)
   { 
-    if(force || this.ModelChanged())
+    if(force || this.ModelChanged(undefined, undefined, undefined, true))
     {
       var self = this;
 
@@ -5690,7 +5851,7 @@ _cheetah.ClassWatcher = function(vm, context, expr)
 
     if(indx == -1)
     {
-      this.Name = expr;
+      this.Name = context.EvaluateText(vm, expr);
       this.Condition = null;
     }
     else
@@ -5713,7 +5874,7 @@ _cheetah.ClassWatcher = function(vm, context, expr)
           c = ch.Evaluate(staticC) + " ";
 
       if(set)
-        c += this.Name;
+        c += ch.Evaluate(this.Name);
 
       context.NewElement.className = $.trim(c);
 
@@ -7141,6 +7302,25 @@ Cheetah.DOMBuilder = function()
   }
 
   /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.GetAttributeOrInnerHtml = function(element, name)
+  {
+    var val = element.getAttribute(name);
+
+    if(val != undefined && val != null)
+      return val;
+
+    return element.innerHTML;
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.HasAttribute = function(element, name)
+  {
+    var val = element.getAttribute(name);
+
+    return val != undefined && val != null;
+  }
+
+  /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.SetAttribute = function(element, name, val)
   {
     element.setAttribute(name, val);
@@ -8252,6 +8432,13 @@ var ServicePut = new function()
 var ServiceDelete = new function()
 {
   InitService(this, "servicedelete", "DELETE");
+}
+
+/***************************************************************************************/
+/***************************************************************************************/
+var ServicePatch = new function()
+{
+  InitService(this, "servicepatch", "PATCH");
 }
 
 /***************************************************************************************/

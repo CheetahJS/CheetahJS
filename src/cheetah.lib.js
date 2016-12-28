@@ -593,6 +593,25 @@ Cheetah.DOMBuilder = function()
   }
 
   /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.GetAttributeOrInnerHtml = function(element, name)
+  {
+    var val = element.getAttribute(name);
+
+    if(val != undefined && val != null)
+      return val;
+
+    return element.innerHTML;
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.HasAttribute = function(element, name)
+  {
+    var val = element.getAttribute(name);
+
+    return val != undefined && val != null;
+  }
+
+  /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.SetAttribute = function(element, name, val)
   {
     element.setAttribute(name, val);

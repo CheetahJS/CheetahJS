@@ -389,6 +389,46 @@ var ch = new function ()
   }
 
   /***************************************************************************************/
+  this.Clear = function(obj)
+  {
+    for(var name in obj)
+    {
+      if(name.StartsWith("$$"))
+      {
+        delete obj[name];
+        continue;
+      }
+
+      var objChild = obj[name];
+    
+      if(typeof objChild === "function")
+        continue;
+
+      if(typeof objChild === "object")
+        ch.Clear(objChild);
+
+      if(Array.isArray(objChild))
+        objChild.Clear();
+
+      delete obj[name];
+    }
+
+    return obj;
+  }
+
+  /***************************************************************************************/
+  this.Copy = function(val1, val2)
+  {
+    ch.Clear(val1);
+
+    for(var name in val2)
+      if(name.indexOf("$$") == -1)
+        val1[name] = val2[name];
+
+    return val1;
+  }
+
+  /***************************************************************************************/
   this.Clone = function (val, shallow, normalize)
   {
     if (!val || typeof val !== "object")
@@ -524,7 +564,13 @@ var ch = new function ()
   }
 
   /*****************************************************************************/
-  this.AttributeValue = function (element, name, required)
+  this.ConvertedAttributeValue = function (element, name, defaultVal)
+  {
+    return ch.Convert(ch.AttributeValue(element, name, false, defaultVal));
+  }
+
+  /*****************************************************************************/
+  this.AttributeValue = function (element, name, required, defaultVal)
   {
     if (!element)
       return null;
@@ -533,10 +579,15 @@ var ch = new function ()
     {
       var attr = element.attributes[name];
 
-      if (required && (!attr || ch.IsEmpty(attr.value)))
+      if((!attr || ch.IsEmpty(attr.value)))
       {
-        LogError("Missing '" + name + "' attribute for '" + element.localName + "' element");
-        return null;
+        if(required)
+        {
+          LogError("Missing '" + name + "' attribute for '" + element.localName + "' element");
+          return null;
+        }
+
+        return defaultVal;
       }
 
       if(attr)
