@@ -95,7 +95,7 @@
         _cheetah.dOperators = _cheetah.Operators.ToDictionary();
 
       var c    = new _cheetah.Compiler();
-      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1, $$scope: 1});
+      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1, $$scope: 1, $$event: 1});
 
       if(expr.indexOf("return") == 0)
       {

@@ -445,7 +445,7 @@ var ch = new function ()
       var aClone = [];
 
       for (var i = 0; i < val.length; ++i)
-        aClone[i] = shallow ? val[i] : ch.Clone(val[i]);
+        aClone[i] = shallow ? val[i] : ch.Clone(val[i], shallow, normalize);
 
       return aClone;
     }
@@ -454,7 +454,7 @@ var ch = new function ()
 
     for (var i in val)
       if (i.indexOf("$$") == -1)
-        oClone[i] = shallow ? val[i] : ch.Clone(val[i]);
+        oClone[i] = shallow ? val[i] : ch.Clone(val[i], shallow, normalize);
 
     return oClone;
   }

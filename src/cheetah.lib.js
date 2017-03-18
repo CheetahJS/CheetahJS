@@ -457,10 +457,20 @@ Cheetah.DOMBuilder = function()
   /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.SetContents = function(element, val)
   {
-    if(element.nodeName == "#text")
-      element.nodeValue = val;
-    else
-      element.innerHTML = val;
+    try
+    {
+      if(element.nodeName == "#text")
+      {
+        if(element.nodeValue != val)
+          element.nodeValue = val;
+      }
+      else
+        element.innerHTML = val;
+    }
+    catch(e)
+    {
+      Cheetah.Logger.Error(e.description);
+    }
   }
 
   /*****************************************************************************/  
@@ -615,6 +625,12 @@ Cheetah.DOMBuilder = function()
   Cheetah.DOMBuilder.prototype.SetAttribute = function(element, name, val)
   {
     element.setAttribute(name, val);
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.SetStyle = function(element, name, val)
+  {
+    element.style[name] = val;
   }
 
   /*****************************************************************************/  
@@ -812,6 +828,12 @@ Cheetah.DOMStringBuilder = function()
   Cheetah.DOMStringBuilder.prototype.SetAttribute = function(element, name, val)
   {
     this.sb.Append(" " + name + "=\"" + val + "\"");
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMStringBuilder.prototype.SetStyle = function(element, name, val)
+  {
+    this.SetAttribute("style", name + ": " + val);
   }
 
   /*****************************************************************************/  

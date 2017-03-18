@@ -1,17 +1,4 @@
-﻿/*****************************************************************************/
-/*                                                                           */
-/*    CheetahJS - "Because it's fast!"                                       */
-/*                                                                           */
-/*       An MVVM Javascript Library for fast web development                 */
-/*                                                                           */
-/*   Copyright (c) 2015-2016 - Jim Lightfoot                                 */
-/*                                                                           */
-/*      This software is available under the MIT license (MIT)               */
-/*                                                                           */
-/*           https://github.com/CheetahJS/CheetahJS/blob/master/LICENSE      */
-/*                                                                           */
-/*****************************************************************************/
-///#source 1 1 /scripts/cheetah.ch.js
+﻿///#source 1 1 /scripts/cheetah.ch.js
 "use strict";
 
 /***************************************************************************************/
@@ -459,7 +446,7 @@ var ch = new function ()
       var aClone = [];
 
       for (var i = 0; i < val.length; ++i)
-        aClone[i] = shallow ? val[i] : ch.Clone(val[i]);
+        aClone[i] = shallow ? val[i] : ch.Clone(val[i], shallow, normalize);
 
       return aClone;
     }
@@ -468,7 +455,7 @@ var ch = new function ()
 
     for (var i in val)
       if (i.indexOf("$$") == -1)
-        oClone[i] = shallow ? val[i] : ch.Clone(val[i]);
+        oClone[i] = shallow ? val[i] : ch.Clone(val[i], shallow, normalize);
 
     return oClone;
   }
@@ -1569,12 +1556,13 @@ var _cheetah = {
 
 /*****************************************************************************/
 /*****************************************************************************/
-Cheetah.ViewModel = function(div)
+Cheetah.ViewModel = function(div, builder)
 {
   this.Model     = null;
   this.ModelPath = "";
   this.ModelVerb = "GET";
   this.Template  = "";
+  this.Builder   = builder ? builder : Cheetah.Builder;
 
   var _impl = new _cheetah.ViewModel(this, div);
 
@@ -1704,6 +1692,7 @@ _cheetah.ViewModel = function(vm, div)
   this.FirstSubRoute    = null;
   this.Synced           = [];
   this.ActualViewModel  = vm;
+  this.Builder          = vm.Builder;
 
   this.Container        = div;
   this.Deferred         = [];
@@ -1723,8 +1712,8 @@ _cheetah.ViewModel = function(vm, div)
 
     if(container)
     {
-      this.ActualViewModel.Template  = Cheetah.Builder.InnerHTML(container);
-      this.ActualViewModel.ModelPath = Cheetah.Builder.GetAttribute(container, "ch-model", true);
+      this.ActualViewModel.Template  = this.Builder.InnerHTML(container);
+      this.ActualViewModel.ModelPath = this.Builder.GetAttribute(container, "ch-model", true);
     }
   }
 }
@@ -1752,8 +1741,8 @@ _cheetah.ViewModel = function(vm, div)
   _cheetah.ViewModel.prototype.GetContainer = function()
   {  
     return this.Container == "body" ? 
-           Cheetah.Builder.FirstElementByName("body") : 
-           Cheetah.Builder.FindElement(this.Container);
+           this.Builder.FirstElementByName("body") : 
+           this.Builder.FindElement(this.Container);
   }
   
   /*****************************************************************************/
@@ -1822,12 +1811,12 @@ _cheetah.ViewModel = function(vm, div)
     {
       var display = wContainer.style.display;
 
-      Cheetah.Builder.ShowElement(wContainer, false);
-      Cheetah.Builder.InnerHTML(wContainer, "");
+      this.Builder.ShowElement(wContainer, false);
+      this.Builder.InnerHTML(wContainer, "");
 
       var templateNode = this.CreateTempNode();  
 
-      Cheetah.Builder.InnerHTML(templateNode, this.ActualViewModel.Template);
+      this.Builder.InnerHTML(templateNode, this.ActualViewModel.Template);
 
       this.Watchers  = new _cheetah.WatcherList(this);
       this.Deferred  = [];
@@ -1835,11 +1824,11 @@ _cheetah.ViewModel = function(vm, div)
 
       this.RenderModel(templateNode, wContainer, this.ActualViewModel.Model);
 
-      Cheetah.Builder.RemoveFromParent(templateNode);
-      wContainer.style.display = (display == "none" || display == "") ? "block" : display;
+      this.Builder.RemoveFromParent(templateNode);
+      this.Builder.SetStyle(wContainer, "display", (display == "none" || display == "") ? "block" : display);
 
       if(this.TemplateNode)
-        Cheetah.Builder.RemoveFromParent(this.TemplateNode);
+        this.Builder.RemoveFromParent(this.TemplateNode);
   
       this.ProcessDeferred();
       this.ProcessAsync(model, fnDone);
@@ -1849,9 +1838,9 @@ _cheetah.ViewModel = function(vm, div)
   /*****************************************************************************/
   _cheetah.ViewModel.prototype.CreateTempNode = function()
   {
-    var node = Cheetah.Builder.AppendChild(Cheetah.Builder.FirstElementByName("body"), "div");
+    var node = this.Builder.AppendChild(Cheetah.Builder.FirstElementByName("body"), "div");
     
-    Cheetah.Builder.ShowElement(node, false);
+    this.Builder.ShowElement(node, false);
 
     return node;
   }
@@ -1862,14 +1851,11 @@ _cheetah.ViewModel = function(vm, div)
     if(!this.TemplateNode)
       this.TemplateNode = this.CreateTempNode();
 
-    var templateNode = Cheetah.Builder.AppendChild(this.TemplateNode, "div");
+    var templateNode = this.Builder.AppendChild(this.TemplateNode, "div");
 
-    Cheetah.Builder.InnerHTML(templateNode, html);
+    this.Builder.InnerHTML(templateNode, html);
 
     return templateNode;
-
-   // return new _cheetah.Template(this, templateNode);
-
   }
 
   /*****************************************************************************/
@@ -2097,7 +2083,9 @@ _cheetah.ViewModel = function(vm, div)
     // Run an action
     if(clickName.indexOf("^") == 0)
     {
-      var action = context.FindAction(clickName.substr(1));
+      var actionName = clickName.substr(1).TrimAfterIncluding("(");
+      var params     = clickName.substr(1).TrimBeforeIncluding("(").TrimAfterIncluding(")");
+      var action     = context.FindAction(actionName);
 
       if(action != null)
       {
@@ -2107,6 +2095,20 @@ _cheetah.ViewModel = function(vm, div)
                  evt.$position = context.Position;
                  evt.$callback = callback;
                
+                 if(params)
+                 {
+                    var list = params.split(",");
+
+                    list.ForEach( function(item)
+                    {
+                       list = $.trim(list);
+
+                        var parts = item.split("=");
+
+                        evt[$.trim(parts[0])] = $.trim(parts[1]);
+                    });
+                 }
+
                  if(!action.Run(evt) && update)
                    vm.UpdateView();
 
@@ -2254,7 +2256,7 @@ _cheetah.Node = function(vm, parentElement, element, model)
   this.Index            = parentElement ? parentElement.Children.length : 0;
   this.PreserveSpace    = parentElement ? parentElement.PreserveSpace : false;
   this.Watch            = true;
-  this.Builder          = parentElement ? parentElement.Builder : Cheetah.Builder;
+  this.Builder          = parentElement ? parentElement.Builder : (vm ? vm.Builder : Cheetah.Builder);
   this.IsRenderLess     = false;
 
   // Constructor
@@ -2652,7 +2654,7 @@ _cheetah.Element = function(vm, parentElement, templateElement, model)
         msg = msg.replaceAll("{1}", param2);
     }
 
-    Cheetah.Logger.Error(_cheetah.ErrorMessages[n]);
+    Cheetah.Logger.Error(msg);
   }
 
   /*****************************************************************************/
@@ -3790,6 +3792,7 @@ _cheetah.DOMElement = function(vm, parentElement, element, model)
               break;
 
             case "click":
+            case "change":
             case "blur":
             case "focus":
             case "mouseover":
@@ -4096,14 +4099,25 @@ _cheetah.Action = function(vm, context, element, parent)
     if(value == "$$target" || value == "//$$target//")
       return model;
 
-    var inject =  {};
+    var inject = CreateEventInjection(evt);
 
     if(value.indexOf("$$result") != -1)
       inject["$$result"] = evt.$$result;
 
-    var expr  = context.EvaluateText(this.ViewModel, value.replaceAll("$$target.", ""));
+    var expr = context.EvaluateText(this.ViewModel, value.replaceAll("$$target.", ""));
 
     return ch.Convert(ch.Evaluate(expr, model, inject));
+  }
+  
+  /*****************************************************************************/
+  function CreateEventInjection(evt)
+  {
+    var inject = { $$event: evt, $$target: evt.$model};
+
+    if(evt.$$result)
+      inject["$$result"] = evt.$$result;
+
+    return inject;
   }
   
   /*****************************************************************************/
@@ -4113,12 +4127,12 @@ _cheetah.Action = function(vm, context, element, parent)
 
     if(ch.IsEmpty(data))
     {
-      var value = Cheetah.Builder.GetAttributeOrInnerHtml(childNode, "value");
+      var vm    = this.ViewModel;
+      var value = vm.Builder.GetAttributeOrInnerHtml(childNode, "value");
 
       if(!value)
         value = ""; 
 
-      var vm        = this.ViewModel;
       var condition = CreateCondition(vm, childNode);
       var self      = this;
 
@@ -4200,26 +4214,29 @@ _cheetah.Action = function(vm, context, element, parent)
   _cheetah.Action.prototype.EvalClassSetter = function(context, childNode)
   {
     var sel    = ch.AttributeValue(childNode, "select");
-    var add    = ch.AttributeValue(childNode, "add");
-    var rem    = ch.AttributeValue(childNode, "remove");
-    var toggle = ch.AttributeValue(childNode, "toggle");
+    var add    = context.EvaluateText(context.ViewModel, ch.AttributeValue(childNode, "add"));
+    var rem    = context.EvaluateText(context.ViewModel, ch.AttributeValue(childNode, "remove"));
+    var toggle = context.EvaluateText(context.ViewModel, ch.AttributeValue(childNode, "toggle"));
 
     this.SetActionStep(context, childNode, function(evt) 
     {
       var $target = ch.SelectTarget(evt, sel);
+      var inject  = CreateEventInjection(evt);
 
       if(rem)
-        $target.removeClass(rem);
+        $target.removeClass(ch.Evaluate(rem, null, inject));
 
       if(add)
-        $target.addClass(add);
+        $target.addClass(ch.Evaluate(add, null, inject));
 
       if(toggle)
       {
-        if(!$target.hasClass(toggle))
-          $target.addClass(toggle);
+        var togValue = ch.Evaluate(toggle, null, inject);
+
+        if(!$target.hasClass(togValue))
+          $target.addClass(togValue);
         else
-          $target.removeClass(toggle);
+          $target.removeClass(togValue);
       }
 
       return false;
@@ -4313,7 +4330,9 @@ _cheetah.Action = function(vm, context, element, parent)
       { 
         var update = false;
 
-        vm[action](param, function()
+        var msg = ch.Evaluate(param);
+
+        vm[action](msg, function()
         {
           update = childAction.Run(evt, true);
         },
@@ -4419,7 +4438,7 @@ _cheetah.Action = function(vm, context, element, parent)
       case "reloadmodel":
         this.SetActionStep(context, childNode, function(evt) 
         {
-          vm.SuppressUpdate = true;
+          //vm.SuppressUpdate = true;
           vm.ActualViewModel.LoadModel();
           return false;
         });
@@ -4494,9 +4513,7 @@ _cheetah.Action = function(vm, context, element, parent)
         
         this.SetActionStep(context, childNode, function(evt) 
         {
-          var inject =  {};
-
-          inject["$$target"] = evt.$model;
+          var inject = CreateEventInjection(evt);
 
           expr.Eval(context, evt.$model, inject);   
           
@@ -4515,12 +4532,8 @@ _cheetah.Action = function(vm, context, element, parent)
 
         this.SetActionStep(context, childNode, function(evt) 
         {
-          var injected = {};
-
-          if(evt.$$result)
-            injected.$$result = evt.$$result;
-
-          var msg = ch.Evaluate(txt, null, injected);
+          var injected = CreateEventInjection(evt);
+          var msg      = ch.Evaluate(txt, null, injected);
 
           switch(type)
           {
@@ -4555,15 +4568,12 @@ _cheetah.Action = function(vm, context, element, parent)
 
         this.SetActionStep(context, childNode, function(evt) 
         {
-          var injected = {};
-
-          if(evt.$$result)
-            injected.$$result = evt.$$result;
+          var injected = CreateEventInjection(evt);
 
           txt = ch.Evaluate(txt, null, injected);
 
           if(title)
-          title = ch.Evaluate(title, null, injected);
+            title = ch.Evaluate(title, null, injected);
 
           switch(type)
           {
@@ -4582,6 +4592,9 @@ _cheetah.Action = function(vm, context, element, parent)
 
         if(title)
           title = context.EvaluateText(this.ViewModel, title);
+
+        if(msg)
+          msg = context.EvaluateText(this.ViewModel, msg);
 
         this.EvalChildConditionalSetter(context, childNode, "Confirm", msg, title);
         break;
@@ -5148,11 +5161,11 @@ _cheetah.PropertyWatcher = function(vm, context)
     {
       _updating = true;
 
-       var newVal = Cheetah.Builder.GetValue(context.NewElement);
+       var newVal = vm.Builder.GetValue(context.NewElement);
 
        newVal = ch.Evaluate(context.Format, null, {$$value: newVal});
 
-      Cheetah.Builder.SetValue(context.NewElement, newVal);
+      vm.Builder.SetValue(context.NewElement, newVal);
       _updating = false;
     }
   }
@@ -5910,7 +5923,7 @@ _cheetah.StyleWatcher = function(vm, context, expr)
           {
             var parts = style.split(":");
 
-            Cheetah.Builder.css(self.Context.NewElement, parts[0], parts[1]);
+            vm.Builder.css(self.Context.NewElement, parts[0], parts[1]);
           }
         );
       }
@@ -5922,7 +5935,7 @@ _cheetah.StyleWatcher = function(vm, context, expr)
         {
           var val = ss.Eval(self.Context);
 
-          Cheetah.Builder.css(self.Context.NewElement, ss.Name, val);
+          vm.Builder.css(self.Context.NewElement, ss.Name, val);
         }
       );
     }
@@ -6644,7 +6657,7 @@ var LoadTemplates = new function()
       var body   = Cheetah.Builder.FirstElementByName("body");     
       var newDiv = Cheetah.Builder.AppendChild(body, "div", function(elem)
       {
-        elem.style.display = "none";
+        Cheetah.Builder.SetStyle(elem, "display", "none");
       });
     }
 
@@ -7166,10 +7179,20 @@ Cheetah.DOMBuilder = function()
   /*****************************************************************************/  
   Cheetah.DOMBuilder.prototype.SetContents = function(element, val)
   {
-    if(element.nodeName == "#text")
-      element.nodeValue = val;
-    else
-      element.innerHTML = val;
+    try
+    {
+      if(element.nodeName == "#text")
+      {
+        if(element.nodeValue != val)
+          element.nodeValue = val;
+      }
+      else
+        element.innerHTML = val;
+    }
+    catch(e)
+    {
+      Cheetah.Logger.Error(e.description);
+    }
   }
 
   /*****************************************************************************/  
@@ -7324,6 +7347,12 @@ Cheetah.DOMBuilder = function()
   Cheetah.DOMBuilder.prototype.SetAttribute = function(element, name, val)
   {
     element.setAttribute(name, val);
+  }
+
+  /*****************************************************************************/  
+  Cheetah.DOMBuilder.prototype.SetStyle = function(element, name, val)
+  {
+    element.style[name] = val;
   }
 
   /*****************************************************************************/  
@@ -7524,6 +7553,12 @@ Cheetah.DOMStringBuilder = function()
   }
 
   /*****************************************************************************/  
+  Cheetah.DOMStringBuilder.prototype.SetStyle = function(element, name, val)
+  {
+    this.SetAttribute("style", name + ": " + val);
+  }
+
+  /*****************************************************************************/  
   Cheetah.DOMStringBuilder.prototype.InnerHTML = function(element, val)
   {
     if(val)
@@ -7638,7 +7673,7 @@ Cheetah.DOMStringBuilder = function()
         _cheetah.dOperators = _cheetah.Operators.ToDictionary();
 
       var c    = new _cheetah.Compiler();
-      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1, $$scope: 1});
+      var expr = c.Compile(expression, this.ModelTokens, this.VarTokens, { $$root: 1, $$result: 1, $$target: 1, $$value: 1, $$scope: 1, $$event: 1});
 
       if(expr.indexOf("return") == 0)
       {
